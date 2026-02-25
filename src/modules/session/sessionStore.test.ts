@@ -6,7 +6,7 @@ import type { Shoe } from '@/modules/blackjack/shoe.ts'
 import { getHiLoValue } from '@/modules/counting/hiLo.ts'
 import { DEFAULT_RULES } from '@/modules/domain/types.ts'
 import { createPromptScheduler } from '@/modules/prompts/promptScheduler.ts'
-import { loadActiveSession, loadSettings } from '@/modules/persistence/repository.ts'
+import { loadActiveSession, loadSettings, saveSettings } from '@/modules/persistence/repository.ts'
 import { useSessionStore } from './sessionStore.ts'
 
 function card(rank: Rank, suit: Suit = 'S'): Card {
@@ -19,8 +19,10 @@ function schedulerStub(): PromptScheduler {
     onPromptSubmitted: () => {},
     getHandsSincePrompt: () => 0,
     getNextThreshold: () => 4,
+    getCadenceTier: () => 'normal' as const,
+    adaptCadence: () => {},
     reset: () => {},
-    serialize: () => ({ handsSincePrompt: 0, nextThreshold: 4 }),
+    serialize: () => ({ handsSincePrompt: 0, nextThreshold: 4, cadenceTier: 'normal' as const }),
   }
 }
 
@@ -58,6 +60,14 @@ function shoeFromCards(cards: Card[], deckCount = 1): Shoe & { drawn: number } {
     get drawn() {
       return drawn
     },
+  }
+}
+
+/** Advance through the dealer turn until it resolves */
+function completeDealerTurn() {
+  for (let i = 0; i < 20; i++) {
+    if (useSessionStore.getState().phase !== 'dealerTurn') return
+    useSessionStore.getState().advanceDealerTurn()
   }
 }
 
@@ -130,6 +140,8 @@ describe('sessionStore regressions', () => {
     })
 
     useSessionStore.getState().dealHand()
+    // dealHand now enters dealerTurn; advance through draws
+    completeDealerTurn()
     const state = useSessionStore.getState()
 
     expect(state.dealerHand?.holeCardRevealed).toBe(true)
@@ -218,6 +230,7 @@ describe('sessionStore regressions', () => {
     })
 
     useSessionStore.getState().dealHand()
+    completeDealerTurn()
     const snapshot = loadActiveSession()
 
     expect(snapshot).not.toBeNull()
@@ -250,6 +263,7 @@ describe('sessionStore regressions', () => {
       schedulerState: {
         handsSincePrompt: 2,
         nextThreshold: 5,
+        cadenceTier: 'normal',
       },
       startedAt: '2026-02-25T00:00:00.000Z',
       savedAt: '2026-02-25T00:10:00.000Z',
@@ -268,6 +282,12 @@ describe('sessionStore regressions', () => {
   })
 
   it('persists in-session speed changes to saved settings', () => {
+    saveSettings({
+      mode: 'playAndCount',
+      ruleConfig: { ...DEFAULT_RULES },
+      enabledPromptTypes: ['runningCount', 'bestAction'],
+    })
+
     setPlayState({
       mode: 'playAndCount',
       ruleConfig: { ...DEFAULT_RULES, dealSpeed: 'normal' },
@@ -280,5 +300,39 @@ describe('sessionStore regressions', () => {
     expect(useSessionStore.getState().ruleConfig.dealSpeed).toBe('veryFast')
     expect(persisted?.mode).toBe('playAndCount')
     expect(persisted?.ruleConfig.dealSpeed).toBe('veryFast')
+    expect(persisted?.enabledPromptTypes).toEqual(['runningCount', 'bestAction'])
+  })
+
+  it('records best-action prompts with action answers', () => {
+    useSessionStore.setState({
+      sessionId: 'best-action-session',
+      phase: 'countPromptOpen',
+      mode: 'playAndCount',
+      ruleConfig: { ...DEFAULT_RULES },
+      shoe: shoeFromCards([card('2')]),
+      runningCount: 2,
+      handNumber: 3,
+      playerHands: [],
+      dealerHand: { cards: [card('10'), card('6')], holeCardRevealed: true },
+      activeHandIndex: 0,
+      dealerDrawQueue: [],
+      promptScheduler: schedulerStub(),
+      pendingPrompt: true,
+      promptStartTime: Date.now() - 150,
+      phaseBeforePause: null,
+      countChecks: [],
+      handsPlayed: 3,
+      activePromptType: 'bestAction',
+      promptExpectedAction: 'stand',
+    })
+
+    useSessionStore.getState().submitBestAction('hit')
+    const check = useSessionStore.getState().countChecks[0]
+
+    expect(check).toBeDefined()
+    expect(check?.promptType).toBe('bestAction')
+    expect(check?.expectedAction).toBe('stand')
+    expect(check?.enteredAction).toBe('hit')
+    expect(check?.isCorrect).toBe(false)
   })
 })

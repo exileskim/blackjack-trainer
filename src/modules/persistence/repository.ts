@@ -1,7 +1,8 @@
 import type { CountCheck, RuleConfig } from '@/modules/domain/types.ts'
-import type { TrainingMode, SessionPhase } from '@/modules/domain/enums.ts'
+import type { TrainingMode, SessionPhase, PromptType, PlayerAction } from '@/modules/domain/enums.ts'
 import type { ShoeState } from '@/modules/blackjack/shoe.ts'
 import type { PromptSchedulerState } from '@/modules/prompts/promptScheduler.ts'
+import type { AccessibilitySettings } from '@/modules/accessibility/settings.ts'
 
 const STORAGE_KEYS = {
   activeSession: 'bjt_active_session',
@@ -21,6 +22,8 @@ export interface SessionSnapshot {
   countChecks: CountCheck[]
   pendingPrompt: boolean
   promptStartTime: number | null
+  activePromptType?: PromptType | null
+  promptExpectedAction?: PlayerAction | null
   shoeState: ShoeState
   schedulerState: PromptSchedulerState
   startedAt: string
@@ -96,6 +99,8 @@ export function loadSessionHistory(): SessionRecord[] {
 export interface PersistedSettings {
   mode: TrainingMode
   ruleConfig: RuleConfig
+  accessibility?: AccessibilitySettings
+  enabledPromptTypes?: PromptType[]
 }
 
 export function saveSettings(settings: PersistedSettings): void {

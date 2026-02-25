@@ -217,17 +217,28 @@ function SessionRow({
                 style={{ animationDelay: `${i * 30}ms` }}
               >
                 <span className="text-white/25">Hand #{c.handNumber}</span>
-                <div className="flex items-center gap-4">
-                  <span className="text-white/40">
-                    You: {c.enteredCount}
-                  </span>
-                  <span className="text-gold-400/70">
-                    Actual: {c.expectedCount}
-                  </span>
-                  <span className="text-red-400/80 w-8 text-right">
-                    {c.delta > 0 ? '+' : ''}{c.delta}
-                  </span>
-                </div>
+                {(c.promptType ?? 'runningCount') !== 'bestAction' ? (
+                  <div className="flex items-center gap-4">
+                    <span className="text-white/40">
+                      You: {c.enteredCount}
+                    </span>
+                    <span className="text-gold-400/70">
+                      Actual: {c.expectedCount}
+                    </span>
+                    <span className="text-red-400/80 w-8 text-right">
+                      {c.delta > 0 ? '+' : ''}{c.delta}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <span className="text-white/40">
+                      Played: {formatAction(c.enteredAction)}
+                    </span>
+                    <span className="text-gold-400/70">
+                      Best: {formatAction(c.expectedAction)}
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -266,4 +277,9 @@ function HistoryFooter({ sessions }: { sessions: SessionRecord[] }) {
       </span>
     </div>
   )
+}
+
+function formatAction(action: string | undefined): string {
+  if (!action) return '—'
+  return action.charAt(0).toUpperCase() + action.slice(1)
 }

@@ -68,7 +68,7 @@ export function ActionBar({
       {mode === 'playAndCount' && isAwaitingAction ? (
         <>
           <ActionButton label="Hit" shortcut="H" onClick={onHit} disabled={!canHit} />
-          <ActionButton label="Stand" shortcut="S" onClick={onStand} disabled={!canStand} />
+          <ActionButton label="Hold" shortcut="S" onClick={onStand} disabled={!canStand} />
           <ActionButton label="Double" shortcut="D" onClick={onDouble} disabled={!canDouble} />
           <ActionButton label="Split" shortcut="P" onClick={onSplit} disabled={!canSplit} />
           {canSurrender && (

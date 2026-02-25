@@ -1,73 +1,55 @@
-# React + TypeScript + Vite
+# Blackjack Count Trainer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web-first blackjack training app focused on Hi-Lo card counting practice.
 
-Currently, two official plugins are available:
+## Core Modes
+- **Play + Count** (default): You actively play each hand with `Hit`, `Hold`, `Double`, `Split`, and `Surrender` while tracking the running count.
+- **Counting Drill**: Hands auto-resolve and periodic prompts ask for the running count.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
+- Hi-Lo running count engine
+- Real blackjack rules (H17/S17, DAS, surrender, penetration)
+- Prompt cadence every 4 or 5 resolved hands
+- Prompt accuracy and response-time tracking
+- Session autosave + recovery after interruption
+- Session history and summary metrics
+- Accessibility controls: high contrast + text scaling
+- PWA manifest/icons for installable web experience
 
-## React Compiler
+## Keyboard Controls
+- `H`: Hit
+- `S`: Hold (stand)
+- `D`: Double
+- `P`: Split
+- `R`: Surrender
+- `N`: Next hand / continue after prompt
+- `Space`: Pause/resume
+- `↑` / `↓`: Increase/decrease drill speed
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Development
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm install
+pnpm dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Validation Commands
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm lint
+pnpm test
+pnpm build
+pnpm test:e2e
 ```
+
+### Long Reliability Run (manual gate)
+
+Run a configurable long browser reliability session (default 30 minutes):
+
+```bash
+RUN_LONG_RELIABILITY=1 RELIABILITY_DURATION_MS=1800000 pnpm test:e2e:reliability
+```
+
+## Deployment
+
+This project uses a **web deployment pipeline** (GitHub Pages). No Windows installer pipeline is required.

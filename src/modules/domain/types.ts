@@ -7,6 +7,7 @@ import type {
   DealSpeed,
   PlayerAction,
   DeckCount,
+  PromptType,
 } from './enums.ts'
 
 export interface Card {
@@ -53,8 +54,11 @@ export interface Session {
 export interface CountCheck {
   readonly sessionId: string
   readonly handNumber: number
+  readonly promptType?: PromptType
   readonly expectedCount: number
   readonly enteredCount: number
+  readonly expectedAction?: PlayerAction
+  readonly enteredAction?: PlayerAction
   readonly responseMs: number
   readonly isCorrect: boolean
   readonly delta: number

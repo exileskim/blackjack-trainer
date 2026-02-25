@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { CountCheck, RuleConfig } from '@/modules/domain/types.ts'
 import type { TrainingMode } from '@/modules/domain/enums.ts'
+import { analyzeWeakSpots } from '@/modules/stats/weakSpotAnalyzer.ts'
 
 interface SummaryScreenProps {
   handsPlayed: number
@@ -10,6 +11,7 @@ interface SummaryScreenProps {
   ruleConfig: RuleConfig
   onNewSession: () => void
   onShowHistory: () => void
+  onMissReplay?: () => void
 }
 
 export function SummaryScreen({
@@ -20,7 +22,10 @@ export function SummaryScreen({
   ruleConfig,
   onNewSession,
   onShowHistory,
+  onMissReplay,
 }: SummaryScreenProps) {
+  const countOnlyChecks = countChecks.filter((c) => (c.promptType ?? 'runningCount') !== 'bestAction')
+  const replayableMisses = countOnlyChecks.filter((c) => !c.isCorrect)
   const totalPrompts = countChecks.length
   const correctPrompts = countChecks.filter((c) => c.isCorrect).length
   const accuracy = totalPrompts > 0 ? (correctPrompts / totalPrompts) * 100 : 0
@@ -51,11 +56,11 @@ export function SummaryScreen({
   const modeLabel = mode === 'countingDrill' ? 'Counting Drill' : 'Play + Count'
 
   return (
-    <div className="h-full flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="h-full flex flex-col relative overflow-hidden">
       <div className="absolute inset-0 bg-void" />
       <div className="absolute inset-0 bg-gradient-to-b from-felt-900/30 via-transparent to-felt-900/20" />
 
-      <div className="relative z-10 flex flex-col items-center gap-10 max-w-lg w-full px-6">
+      <div className="relative z-10 flex-1 overflow-y-auto flex flex-col items-center gap-10 max-w-lg w-full mx-auto px-6 py-10">
         {/* Header */}
         <div className="text-center">
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-gold-400/60 mb-2">
@@ -73,7 +78,7 @@ export function SummaryScreen({
         {/* Stats grid */}
         <div className="w-full grid grid-cols-2 gap-4" role="list" aria-label="Session statistics">
           <StatCard label="Hands Played" value={handsPlayed.toString()} />
-          <StatCard label="Count Checks" value={totalPrompts.toString()} />
+          <StatCard label="Prompts" value={totalPrompts.toString()} />
           <StatCard
             label="Accuracy"
             value={`${accuracy.toFixed(0)}%`}
@@ -105,22 +110,71 @@ export function SummaryScreen({
                     <span className="font-mono text-xs text-white/30">
                       Hand #{c.handNumber}
                     </span>
-                    <div className="flex items-center gap-4">
-                      <span className="font-mono text-xs text-white/50">
-                        Entered: {c.enteredCount}
-                      </span>
-                      <span className="font-mono text-xs text-gold-400">
-                        Actual: {c.expectedCount}
-                      </span>
-                      <span className="font-mono text-xs text-red-400">
-                        {c.delta > 0 ? '+' : ''}{c.delta}
-                      </span>
-                    </div>
+                    {(c.promptType ?? 'runningCount') !== 'bestAction' ? (
+                      <div className="flex items-center gap-4">
+                        <span className="font-mono text-xs text-white/50">
+                          Entered: {c.enteredCount}
+                        </span>
+                        <span className="font-mono text-xs text-gold-400">
+                          Actual: {c.expectedCount}
+                        </span>
+                        <span className="font-mono text-xs text-red-400">
+                          {c.delta > 0 ? '+' : ''}{c.delta}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-4">
+                        <span className="font-mono text-xs text-white/50">
+                          Played: {formatAction(c.enteredAction)}
+                        </span>
+                        <span className="font-mono text-xs text-gold-400">
+                          Best: {formatAction(c.expectedAction)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
             </div>
           </div>
         )}
+
+        {/* Weak-spot insights */}
+        {countOnlyChecks.length >= 3 && (() => {
+          const report = analyzeWeakSpots(countOnlyChecks)
+          if (report.insights.length === 0) return null
+          return (
+            <div className="w-full">
+              <h3 className="font-body text-xs uppercase tracking-wider text-white/30 mb-3">
+                Insights
+              </h3>
+              <div className="space-y-2">
+                {report.insights.map((insight, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-lg border px-3 py-2.5 ${
+                      insight.severity === 'critical'
+                        ? 'border-red-400/20 bg-red-400/5'
+                        : insight.severity === 'warning'
+                          ? 'border-gold-400/20 bg-gold-400/5'
+                          : 'border-emerald-400/20 bg-emerald-400/5'
+                    }`}
+                  >
+                    <p className={`font-body text-xs font-semibold mb-0.5 ${
+                      insight.severity === 'critical'
+                        ? 'text-red-400'
+                        : insight.severity === 'warning'
+                          ? 'text-gold-400'
+                          : 'text-emerald-400'
+                    }`}>
+                      {insight.label}
+                    </p>
+                    <p className="font-body text-[11px] text-white/40">{insight.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Actions */}
         <div className="w-full flex flex-col gap-3">
@@ -130,6 +184,14 @@ export function SummaryScreen({
           >
             New Session
           </button>
+          {onMissReplay && replayableMisses.length > 0 && (
+            <button
+              onClick={onMissReplay}
+              className="w-full rounded-xl border border-red-400/20 bg-red-400/[0.04] px-6 py-3 font-body text-sm text-red-400/70 hover:text-red-400 hover:bg-red-400/[0.08] transition-all"
+            >
+              Replay Count Misses ({replayableMisses.length})
+            </button>
+          )}
           <button
             onClick={onShowHistory}
             className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-6 py-3 font-body text-sm text-white/40 hover:text-white/60 hover:bg-white/[0.04] transition-all"
@@ -168,4 +230,9 @@ function StatCard({
       <p className={`font-mono text-2xl font-bold ${valueColor}`}>{value}</p>
     </div>
   )
+}
+
+function formatAction(action: string | undefined): string {
+  if (!action) return '—'
+  return action.charAt(0).toUpperCase() + action.slice(1)
 }

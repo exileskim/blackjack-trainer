@@ -9,7 +9,7 @@ const TRANSITIONS: Record<SessionPhase, readonly SessionPhase[]> = {
   ready: ['dealing'],
   dealing: ['awaitingPlayerAction', 'dealerTurn', 'handResolved'],
   awaitingPlayerAction: ['dealing', 'dealerTurn', 'paused'],
-  dealerTurn: ['handResolved'],
+  dealerTurn: ['handResolved', 'countPromptOpen'],
   handResolved: ['dealing', 'countPromptOpen', 'completed', 'paused'],
   countPromptOpen: ['handResolved', 'paused'],
   paused: ['ready', 'dealing', 'awaitingPlayerAction', 'dealerTurn', 'handResolved', 'countPromptOpen', 'completed'],

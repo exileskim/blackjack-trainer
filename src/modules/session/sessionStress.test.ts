@@ -25,6 +25,7 @@ function resetStore() {
     playerHands: [],
     dealerHand: null,
     activeHandIndex: 0,
+    dealerDrawQueue: [],
     promptScheduler: null,
     pendingPrompt: false,
     promptStartTime: null,
@@ -33,6 +34,14 @@ function resetStore() {
     handsPlayed: 0,
     startedAt: null,
   })
+}
+
+/** Advance through dealer turn until it resolves */
+function completeDealerTurn() {
+  for (let i = 0; i < 20; i++) {
+    if (useSessionStore.getState().phase !== 'dealerTurn') return
+    useSessionStore.getState().advanceDealerTurn()
+  }
 }
 
 beforeEach(() => {
@@ -70,6 +79,7 @@ describe('counting drill stress test', () => {
       const before = useSessionStore.getState()
       expect(['ready', 'handResolved']).toContain(before.phase)
       before.dealHand()
+      completeDealerTurn()
 
       const after = useSessionStore.getState()
       expect(after.handNumber).toBe(i + 1)
@@ -114,6 +124,7 @@ describe('counting drill stress test', () => {
       const before = useSessionStore.getState()
       expect(['ready', 'handResolved']).toContain(before.phase)
       before.dealHand()
+      completeDealerTurn()
 
       const after = useSessionStore.getState()
       expect(after.shoe).not.toBeNull()
@@ -145,6 +156,7 @@ describe('counting drill stress test', () => {
       }
       const before = useSessionStore.getState()
       before.dealHand()
+      completeDealerTurn()
 
       const after = useSessionStore.getState()
       expect(after.runningCount).toBeGreaterThanOrEqual(-20)
@@ -184,6 +196,7 @@ describe('play and count stress test', () => {
         // Just stand on everything for simplicity
         current.playerStand()
       }
+      completeDealerTurn()
 
       const after = useSessionStore.getState()
       expect(['handResolved', 'countPromptOpen']).toContain(after.phase)
@@ -222,6 +235,7 @@ describe('play and count stress test', () => {
         safety++
         useSessionStore.getState().playerHit()
       }
+      completeDealerTurn()
 
       const after = useSessionStore.getState()
       expect(['handResolved', 'countPromptOpen']).toContain(after.phase)
@@ -250,6 +264,7 @@ describe('pause/resume during extended session', () => {
 
       const before = useSessionStore.getState()
       before.dealHand()
+      completeDealerTurn()
 
       // Pause and resume after each hand
       const after = useSessionStore.getState()

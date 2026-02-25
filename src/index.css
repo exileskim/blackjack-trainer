@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+:root {
+  --app-text-scale: 1;
+}
+
 @theme {
   /* Felt greens */
   --color-felt-900: #0a1f14;
@@ -40,12 +44,31 @@ html, body, #root {
   overflow: hidden;
 }
 
+html {
+  font-size: calc(16px * var(--app-text-scale));
+}
+
 body {
   font-family: var(--font-body);
   background-color: var(--color-void);
   color: #e8e4dc;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html.high-contrast {
+  --color-felt-900: #06160e;
+  --color-felt-800: #0a2116;
+  --color-felt-700: #103122;
+  --color-felt-600: #1a4a33;
+  --color-felt-500: #236245;
+  --color-gold-400: #f2cc54;
+  --color-card-white: #ffffff;
+  --color-void: #020604;
+}
+
+html.high-contrast #root {
+  filter: contrast(1.14) saturate(1.05);
 }
 
 /* Felt texture via SVG noise */
@@ -118,4 +141,8 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-gold-400);
   outline-offset: 2px;
+}
+
+html.high-contrast :focus-visible {
+  outline-width: 3px;
 }

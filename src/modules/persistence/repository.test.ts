@@ -40,6 +40,7 @@ const mockSnapshot: SessionSnapshot = {
   schedulerState: {
     handsSincePrompt: 1,
     nextThreshold: 4,
+    cadenceTier: 'normal',
   },
   countChecks: [
     {
@@ -126,6 +127,32 @@ describe('settings persistence', () => {
     saveSettings({ mode: 'playAndCount', ruleConfig: mockSnapshot.ruleConfig })
     const loaded = loadSettings()
     expect(loaded).toEqual({ mode: 'playAndCount', ruleConfig: mockSnapshot.ruleConfig })
+  })
+
+  it('saves and loads accessibility settings', () => {
+    saveSettings({
+      mode: 'countingDrill',
+      ruleConfig: mockSnapshot.ruleConfig,
+      accessibility: {
+        highContrast: true,
+        textScale: 'large',
+      },
+    })
+    const loaded = loadSettings()
+    expect(loaded?.accessibility).toEqual({
+      highContrast: true,
+      textScale: 'large',
+    })
+  })
+
+  it('saves and loads enabled prompt types', () => {
+    saveSettings({
+      mode: 'playAndCount',
+      ruleConfig: mockSnapshot.ruleConfig,
+      enabledPromptTypes: ['runningCount', 'trueCount', 'bestAction'],
+    })
+    const loaded = loadSettings()
+    expect(loaded?.enabledPromptTypes).toEqual(['runningCount', 'trueCount', 'bestAction'])
   })
 
   it('returns null when no settings saved', () => {

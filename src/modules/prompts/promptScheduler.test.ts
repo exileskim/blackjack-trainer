@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createPromptScheduler } from './promptScheduler.ts'
+import { createPromptScheduler, createPromptSchedulerFromState } from './promptScheduler.ts'
 
 describe('promptScheduler', () => {
   it('triggers after 4 hands with rng < 0.5', () => {
@@ -91,5 +91,55 @@ describe('promptScheduler', () => {
 
     scheduler.reset()
     expect(scheduler.getHandsSincePrompt()).toBe(0)
+  })
+})
+
+describe('adaptive cadence', () => {
+  it('tightens to 2-3 when miss rate >= 0.5', () => {
+    const scheduler = createPromptScheduler(() => 0.3)
+    expect(scheduler.getCadenceTier()).toBe('normal')
+    expect(scheduler.getNextThreshold()).toBe(4)
+
+    scheduler.adaptCadence(0.6) // 60% miss rate
+    expect(scheduler.getCadenceTier()).toBe('tight')
+    expect([2, 3]).toContain(scheduler.getNextThreshold())
+  })
+
+  it('restores to 4-5 when miss rate < 0.5', () => {
+    const scheduler = createPromptScheduler(() => 0.3)
+    scheduler.adaptCadence(0.6)
+    expect(scheduler.getCadenceTier()).toBe('tight')
+
+    scheduler.adaptCadence(0.2) // 20% miss rate
+    expect(scheduler.getCadenceTier()).toBe('normal')
+    expect([4, 5]).toContain(scheduler.getNextThreshold())
+  })
+
+  it('triggers at tight cadence correctly', () => {
+    const scheduler = createPromptScheduler(() => 0.3)
+    scheduler.adaptCadence(0.8) // tighten
+    expect(scheduler.getNextThreshold()).toBe(2)
+
+    expect(scheduler.onHandResolved()).toBe(false) // hand 1
+    expect(scheduler.onHandResolved()).toBe(true)  // hand 2 -> trigger
+  })
+
+  it('serializes and restores cadence tier', () => {
+    const scheduler = createPromptScheduler(() => 0.3)
+    scheduler.adaptCadence(0.7)
+    const state = scheduler.serialize()
+    expect(state.cadenceTier).toBe('tight')
+
+    const restored = createPromptSchedulerFromState(state, () => 0.3)
+    expect(restored.getCadenceTier()).toBe('tight')
+    expect([2, 3]).toContain(restored.getNextThreshold())
+  })
+
+  it('does not re-roll threshold if tier unchanged', () => {
+    const scheduler = createPromptScheduler(() => 0.3)
+    expect(scheduler.getNextThreshold()).toBe(4)
+
+    scheduler.adaptCadence(0.1) // still normal
+    expect(scheduler.getNextThreshold()).toBe(4) // unchanged
   })
 })

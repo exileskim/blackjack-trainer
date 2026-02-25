@@ -1,12 +1,27 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSessionStore } from '@/modules/session/sessionStore.ts'
 import { HomeScreen } from '@/ui/screens/HomeScreen.tsx'
 import { TableScreen } from '@/ui/screens/TableScreen.tsx'
 import { SummaryScreen } from '@/ui/screens/SummaryScreen.tsx'
 import { HistoryScreen } from '@/ui/screens/HistoryScreen.tsx'
-import { loadActiveSession, clearActiveSession, type SessionSnapshot } from '@/modules/persistence/repository.ts'
+import { DeckCountdownScreen } from '@/ui/screens/DeckCountdownScreen.tsx'
+import { TrueCountDrillScreen } from '@/ui/screens/TrueCountDrillScreen.tsx'
+import { MissReplayScreen } from '@/ui/screens/MissReplayScreen.tsx'
+import {
+  loadActiveSession,
+  clearActiveSession,
+  loadSettings,
+  type SessionSnapshot,
+} from '@/modules/persistence/repository.ts'
+import {
+  applyAccessibilitySettings,
+  normalizeAccessibilitySettings,
+} from '@/modules/accessibility/settings.ts'
+import { completeOnboardingStep } from '@/modules/onboarding/onboarding.ts'
 import type { TrainingMode } from '@/modules/domain/enums.ts'
-import type { RuleConfig } from '@/modules/domain/types.ts'
+import type { CountCheck, RuleConfig } from '@/modules/domain/types.ts'
+
+type OverlayView = 'history' | 'deckCountdown' | 'trueCountDrill' | 'missReplay' | null
 
 export function App() {
   const phase = useSessionStore((s) => s.phase)
@@ -24,7 +39,16 @@ export function App() {
     return saved && saved.handsPlayed > 0 ? saved : null
   })
 
-  const [showHistory, setShowHistory] = useState(false)
+  const [overlay, setOverlay] = useState<OverlayView>(null)
+  const [missReplayChecks, setMissReplayChecks] = useState<CountCheck[]>([])
+  const previousPhaseRef = useRef(phase)
+
+  useEffect(() => {
+    const savedSettings = loadSettings()
+    applyAccessibilitySettings(
+      normalizeAccessibilitySettings(savedSettings?.accessibility),
+    )
+  }, [])
 
   const handleRecover = useCallback(() => {
     if (recoveryPrompt) {
@@ -39,8 +63,8 @@ export function App() {
   }, [])
 
   const handleStartSession = useCallback(
-    (mode: TrainingMode, rules: RuleConfig) => {
-      startSession(mode, rules)
+    (selectedMode: TrainingMode, rules: RuleConfig) => {
+      startSession(selectedMode, rules)
     },
     [startSession],
   )
@@ -53,8 +77,50 @@ export function App() {
     resetToIdle()
   }, [resetToIdle])
 
-  if (showHistory) {
-    return <HistoryScreen onBack={() => setShowHistory(false)} />
+  const goHome = useCallback(() => {
+    setOverlay(null)
+    setMissReplayChecks([])
+  }, [])
+
+  const handleStartMissReplay = useCallback((checks: CountCheck[]) => {
+    setMissReplayChecks(checks)
+    setOverlay('missReplay')
+  }, [])
+
+  useEffect(() => {
+    const previousPhase = previousPhaseRef.current
+    const transitionedToCompleted = phase === 'completed' && previousPhase !== 'completed'
+    if (transitionedToCompleted && handsPlayed > 0) {
+      if (mode === 'countingDrill') completeOnboardingStep('countingDrill')
+      if (mode === 'playAndCount') completeOnboardingStep('playAndCount')
+    }
+    previousPhaseRef.current = phase
+  }, [phase, handsPlayed, mode])
+
+  if (overlay === 'history') {
+    return <HistoryScreen onBack={goHome} />
+  }
+
+  if (overlay === 'deckCountdown') {
+    return (
+      <DeckCountdownScreen
+        onBack={goHome}
+        onComplete={() => completeOnboardingStep('deckCountdown')}
+      />
+    )
+  }
+
+  if (overlay === 'trueCountDrill') {
+    return (
+      <TrueCountDrillScreen
+        onBack={goHome}
+        onComplete={() => completeOnboardingStep('trueCount')}
+      />
+    )
+  }
+
+  if (overlay === 'missReplay') {
+    return <MissReplayScreen countChecks={missReplayChecks} onBack={goHome} />
   }
 
   if (phase === 'idle') {
@@ -64,7 +130,9 @@ export function App() {
         recoveryPrompt={recoveryPrompt}
         onRecover={handleRecover}
         onDiscardRecovery={handleDiscardRecovery}
-        onShowHistory={() => setShowHistory(true)}
+        onShowHistory={() => setOverlay('history')}
+        onDeckCountdown={() => setOverlay('deckCountdown')}
+        onTrueCountDrill={() => setOverlay('trueCountDrill')}
       />
     )
   }
@@ -78,7 +146,8 @@ export function App() {
         mode={mode}
         ruleConfig={ruleConfig}
         onNewSession={handleNewSession}
-        onShowHistory={() => setShowHistory(true)}
+        onShowHistory={() => setOverlay('history')}
+        onMissReplay={() => handleStartMissReplay(countChecks)}
       />
     )
   }

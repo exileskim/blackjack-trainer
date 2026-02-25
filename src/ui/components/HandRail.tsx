@@ -7,11 +7,12 @@ interface HandRailProps {
   total?: number
   outcome?: string
   holeCardHidden?: boolean
+  resolving?: boolean
 }
 
-export function HandRail({ cards, label, total, outcome, holeCardHidden = false }: HandRailProps) {
+export function HandRail({ cards, label, total, outcome, holeCardHidden = false, resolving = false }: HandRailProps) {
   return (
-    <div className="flex flex-col items-center gap-2" aria-label={`${label ?? 'Hand'}${total !== undefined ? `, total ${total}` : ''}${outcome ? `, ${outcome}` : ''}`}>
+    <div className="flex flex-col items-center gap-2" aria-label={`${label ?? 'Hand'}${total !== undefined ? `, total ${total}` : ''}${outcome ? `, ${outcome}` : ''}${resolving ? ', resolving' : ''}`}>
       {/* Label + total */}
       {label && (
         <div className="flex items-center gap-3">
@@ -21,6 +22,12 @@ export function HandRail({ cards, label, total, outcome, holeCardHidden = false 
           {total !== undefined && (
             <span className="font-mono text-sm font-semibold text-gold-400">
               {total}
+            </span>
+          )}
+          {resolving && !outcome && (
+            <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-gold-400/10 text-gold-400/70">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-gold-400/80 animate-pulse" />
+              Resolving
             </span>
           )}
           {outcome && (
