@@ -16,6 +16,11 @@ A web-first blackjack training app focused on Hi-Lo card counting practice.
 - Accessibility controls: high contrast + text scaling
 - PWA manifest/icons for installable web experience
 
+## Strategy Data Source
+- Canonical strategy source module: `src/modules/strategy/sources/bjaH17_2019.ts`
+- Source chart: Blackjack Apprenticeship H17 Deviation Chart (PDF)
+- URL: https://www.blackjackapprenticeship.com/wp-content/uploads/2019/07/BJA_H17.pdf
+
 ## Keyboard Controls
 - `H`: Hit
 - `S`: Hold (stand)

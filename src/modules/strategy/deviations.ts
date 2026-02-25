@@ -1,6 +1,7 @@
 import type { Card, RuleConfig } from '@/modules/domain/types.ts'
 import type { PlayerAction } from '@/modules/domain/enums.ts'
 import { cardValue, handTotal, isSoft } from '@/modules/blackjack/rules.ts'
+import { BJA_H17_2019_SOURCE } from '@/modules/strategy/sources/bjaH17_2019.ts'
 
 /**
  * BJ-035: Illustrious 18 + Fab 4 deviation layer.
@@ -22,40 +23,8 @@ export interface Deviation {
   readonly group: 'I18' | 'Fab4'
 }
 
-// ─── Illustrious 18 ────────────────────────────────────────────────────────
-// The 18 most valuable index plays, ordered by EV impact.
-const ILLUSTRIOUS_18: Deviation[] = [
-  // Insurance is handled separately (not a hand action), so we skip it.
-  // The remaining I18 plays:
-  { name: '16 vs 10: Stand',        playerTotal: 16, isSoftHand: false, isPair: false, dealerUpValue: 10, basicAction: 'hit',    deviationAction: 'stand',  tcThreshold: 0,  group: 'I18' },
-  { name: '15 vs 10: Stand',        playerTotal: 15, isSoftHand: false, isPair: false, dealerUpValue: 10, basicAction: 'hit',    deviationAction: 'stand',  tcThreshold: 4,  group: 'I18' },
-  { name: '20 vs 5: Split',         playerTotal: 20, isSoftHand: false, isPair: true,  dealerUpValue: 5,  basicAction: 'stand',  deviationAction: 'split',  tcThreshold: 5,  group: 'I18' },
-  { name: '20 vs 6: Split',         playerTotal: 20, isSoftHand: false, isPair: true,  dealerUpValue: 6,  basicAction: 'stand',  deviationAction: 'split',  tcThreshold: 4,  group: 'I18' },
-  { name: '10 vs 10: Double',       playerTotal: 10, isSoftHand: false, isPair: false, dealerUpValue: 10, basicAction: 'hit',    deviationAction: 'double', tcThreshold: 4,  group: 'I18' },
-  { name: '12 vs 3: Stand',         playerTotal: 12, isSoftHand: false, isPair: false, dealerUpValue: 3,  basicAction: 'hit',    deviationAction: 'stand',  tcThreshold: 2,  group: 'I18' },
-  { name: '12 vs 2: Stand',         playerTotal: 12, isSoftHand: false, isPair: false, dealerUpValue: 2,  basicAction: 'hit',    deviationAction: 'stand',  tcThreshold: 3,  group: 'I18' },
-  { name: '11 vs A: Double',        playerTotal: 11, isSoftHand: false, isPair: false, dealerUpValue: 11, basicAction: 'hit',    deviationAction: 'double', tcThreshold: 1,  group: 'I18' },
-  { name: '9 vs 2: Double',         playerTotal: 9,  isSoftHand: false, isPair: false, dealerUpValue: 2,  basicAction: 'hit',    deviationAction: 'double', tcThreshold: 1,  group: 'I18' },
-  { name: '10 vs A: Double',        playerTotal: 10, isSoftHand: false, isPair: false, dealerUpValue: 11, basicAction: 'hit',    deviationAction: 'double', tcThreshold: 4,  group: 'I18' },
-  { name: '9 vs 7: Double',         playerTotal: 9,  isSoftHand: false, isPair: false, dealerUpValue: 7,  basicAction: 'hit',    deviationAction: 'double', tcThreshold: 3,  group: 'I18' },
-  { name: '16 vs 9: Stand',         playerTotal: 16, isSoftHand: false, isPair: false, dealerUpValue: 9,  basicAction: 'hit',    deviationAction: 'stand',  tcThreshold: 5,  group: 'I18' },
-  { name: '13 vs 2: Hit',           playerTotal: 13, isSoftHand: false, isPair: false, dealerUpValue: 2,  basicAction: 'stand',  deviationAction: 'hit',    tcThreshold: -1, group: 'I18' },
-  { name: '12 vs 4: Hit',           playerTotal: 12, isSoftHand: false, isPair: false, dealerUpValue: 4,  basicAction: 'stand',  deviationAction: 'hit',    tcThreshold: 0,  group: 'I18' },
-  { name: '12 vs 5: Hit',           playerTotal: 12, isSoftHand: false, isPair: false, dealerUpValue: 5,  basicAction: 'stand',  deviationAction: 'hit',    tcThreshold: -2, group: 'I18' },
-  { name: '12 vs 6: Hit',           playerTotal: 12, isSoftHand: false, isPair: false, dealerUpValue: 6,  basicAction: 'stand',  deviationAction: 'hit',    tcThreshold: -1, group: 'I18' },
-  { name: '13 vs 3: Hit',           playerTotal: 13, isSoftHand: false, isPair: false, dealerUpValue: 3,  basicAction: 'stand',  deviationAction: 'hit',    tcThreshold: -2, group: 'I18' },
-]
-
-// ─── Fab 4 surrenders ───────────────────────────────────────────────────────
-// The 4 most valuable surrender deviations.
-const FAB_4: Deviation[] = [
-  { name: '14 vs 10: Surrender',    playerTotal: 14, isSoftHand: false, isPair: false, dealerUpValue: 10, basicAction: 'hit',       deviationAction: 'surrender', tcThreshold: 3,  group: 'Fab4' },
-  { name: '15 vs 10: Surrender',    playerTotal: 15, isSoftHand: false, isPair: false, dealerUpValue: 10, basicAction: 'hit',       deviationAction: 'surrender', tcThreshold: 0,  group: 'Fab4' },
-  { name: '15 vs 9: Surrender',     playerTotal: 15, isSoftHand: false, isPair: false, dealerUpValue: 9,  basicAction: 'hit',       deviationAction: 'surrender', tcThreshold: 2,  group: 'Fab4' },
-  { name: '15 vs A: Surrender',     playerTotal: 15, isSoftHand: false, isPair: false, dealerUpValue: 11, basicAction: 'hit',       deviationAction: 'surrender', tcThreshold: 1,  group: 'Fab4' },
-]
-
-export const ALL_DEVIATIONS: readonly Deviation[] = [...ILLUSTRIOUS_18, ...FAB_4]
+export const DEVIATION_SOURCE = BJA_H17_2019_SOURCE.metadata
+export const ALL_DEVIATIONS: readonly Deviation[] = BJA_H17_2019_SOURCE.deviations
 
 /**
  * Given a hand state and true count, find the applicable deviation (if any).

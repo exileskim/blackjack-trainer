@@ -3,7 +3,7 @@ import type { Card, RuleConfig } from '@/modules/domain/types.ts'
 import type { Rank, Suit } from '@/modules/domain/enums.ts'
 import { DEFAULT_RULES } from '@/modules/domain/types.ts'
 import { getHiLoValue } from '@/modules/counting/hiLo.ts'
-import { getBasicStrategyAction, isCorrectPlay } from './basicStrategy.ts'
+import { getBasicStrategyAction, isCorrectPlay, BASIC_STRATEGY_SOURCE } from './basicStrategy.ts'
 
 function card(rank: Rank, suit: Suit = 'S'): Card {
   return { rank, suit, countValue: getHiLoValue(rank) }
@@ -81,6 +81,14 @@ describe('basicStrategy – hard totals', () => {
 
   it('hits hard 9 vs 3 with 3+ cards (no double)', () => {
     expect(getBasicStrategyAction([card('2'), card('3'), card('4')], card('3'), H17_DAS)).toBe('hit')
+  })
+})
+
+describe('basicStrategy – source metadata', () => {
+  it('pins strategy data to the BJA H17 chart source', () => {
+    expect(BASIC_STRATEGY_SOURCE.id).toBe('bja-h17-2019')
+    expect(BASIC_STRATEGY_SOURCE.sourceUrl).toContain('blackjackapprenticeship.com')
+    expect(BASIC_STRATEGY_SOURCE.pdfMd5).toBe('de7471c5d1e232bf85e790b8a83ff9e9')
   })
 })
 

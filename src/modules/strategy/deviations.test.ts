@@ -3,7 +3,7 @@ import type { Card, RuleConfig } from '@/modules/domain/types.ts'
 import type { Rank, Suit } from '@/modules/domain/enums.ts'
 import { DEFAULT_RULES } from '@/modules/domain/types.ts'
 import { getHiLoValue } from '@/modules/counting/hiLo.ts'
-import { findApplicableDeviation, getDeviationAction, ALL_DEVIATIONS } from './deviations.ts'
+import { findApplicableDeviation, getDeviationAction, ALL_DEVIATIONS, DEVIATION_SOURCE } from './deviations.ts'
 
 function card(rank: Rank, suit: Suit = 'S'): Card {
   return { rank, suit, countValue: getHiLoValue(rank) }
@@ -146,6 +146,11 @@ describe('deviations – edge cases', () => {
 })
 
 describe('deviations – data integrity', () => {
+  it('pins deviation data to the BJA H17 chart source', () => {
+    expect(DEVIATION_SOURCE.id).toBe('bja-h17-2019')
+    expect(DEVIATION_SOURCE.sourceUrl).toContain('blackjackapprenticeship.com')
+  })
+
   it('has 17 I18 plays (excluding insurance)', () => {
     expect(ALL_DEVIATIONS.filter((d) => d.group === 'I18').length).toBe(17)
   })
