@@ -5,6 +5,7 @@ export interface SessionTrendPoint {
   accuracy: number
   avgResponseMs: number
   hands: number
+  totalPrompts: number
 }
 
 export interface PersonalRecord {
@@ -35,6 +36,11 @@ export interface ProgressSnapshot {
 const RECENT_WINDOW = 5
 
 const EMPTY_RECORD: PersonalRecord = { value: 0, sessionId: '', date: '' }
+
+function avg(nums: number[]): number {
+  if (nums.length === 0) return 0
+  return nums.reduce((sum, n) => sum + n, 0) / nums.length
+}
 
 function toDateString(iso: string): string {
   return iso.slice(0, 10)
@@ -139,25 +145,24 @@ export function computeProgress(
     accuracy: s.summary.accuracy,
     avgResponseMs: s.summary.avgResponseMs,
     hands: s.handsPlayed,
+    totalPrompts: s.summary.totalPrompts,
   }))
 
   // --- Accuracy ---
-  const overallAccuracy =
-    sorted.reduce((sum, s) => sum + s.summary.accuracy, 0) / sorted.length
+  const overallAccuracy = avg(sorted.map((s) => s.summary.accuracy))
   const recentSessions = sorted.slice(-RECENT_WINDOW)
-  const recentAccuracy =
-    recentSessions.reduce((sum, s) => sum + s.summary.accuracy, 0) / recentSessions.length
+  const recentAccuracy = avg(recentSessions.map((s) => s.summary.accuracy))
 
   // --- Speed ---
-  const overallSpeed =
-    sorted.reduce((sum, s) => sum + s.summary.avgResponseMs, 0) / sorted.length
-  const recentSpeed =
-    recentSessions.reduce((sum, s) => sum + s.summary.avgResponseMs, 0) /
-    recentSessions.length
+  const speedEligible = sorted.filter((s) => s.summary.totalPrompts > 0)
+  const recentSpeedEligible = speedEligible.slice(-RECENT_WINDOW)
+  const overallSpeed = avg(speedEligible.map((s) => s.summary.avgResponseMs))
+  const recentSpeed = avg(recentSpeedEligible.map((s) => s.summary.avgResponseMs))
 
   // --- Deltas ---
   const accuracyDelta = recentAccuracy - overallAccuracy
-  const speedDelta = overallSpeed - recentSpeed // positive = improving (faster)
+  const speedDelta =
+    speedEligible.length > 0 ? overallSpeed - recentSpeed : 0 // positive = improving (faster)
 
   // --- Streaks ---
   const sessionDates = sorted.map((s) => toDateString(s.startedAt))

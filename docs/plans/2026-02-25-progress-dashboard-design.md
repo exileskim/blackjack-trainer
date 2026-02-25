@@ -37,7 +37,7 @@ No migration needed — absent key means no milestones unlocked yet.
 ### Layout (top to bottom)
 
 1. **Header** — "Progress" title with back button
-2. **Hero sparkline** — accuracy % across sessions, filterable by last 10 / last 30 / all
+2. **Hero sparkline** — accuracy % across sessions, filterable by last 7 days / last 30 days / all
 3. **Stat cards (2x2 grid)**:
    - Accuracy: last-5 avg vs overall avg, delta arrow (green up / red down)
    - Speed: last-5 avg response vs overall avg, delta arrow

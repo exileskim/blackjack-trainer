@@ -156,6 +156,32 @@ describe('computeProgress', () => {
     expect(result.speedDelta).toBe(-2000) // overall - recent = 3000 - 5000
   })
 
+  it('ignores zero-prompt sessions in speed aggregates', () => {
+    const sessions = [
+      makeSession({
+        sessionId: 's1',
+        avgResponseMs: 2500,
+        totalPrompts: 10,
+        startedAt: '2024-01-01T10:00:00Z',
+      }),
+      makeSession({
+        sessionId: 's2',
+        avgResponseMs: 0,
+        totalPrompts: 0,
+        startedAt: '2024-01-02T10:00:00Z',
+      }),
+      makeSession({
+        sessionId: 's3',
+        avgResponseMs: 1500,
+        totalPrompts: 10,
+        startedAt: '2024-01-03T10:00:00Z',
+      }),
+    ]
+    const result = computeProgress(sessions)
+    expect(result.overallSpeed).toBe(2000) // (2500 + 1500) / 2
+    expect(result.recentSpeed).toBe(2000)
+  })
+
   describe('practice streaks', () => {
     it('counts consecutive calendar days ending today', () => {
       const now = new Date('2024-01-05T15:00:00Z')
@@ -326,6 +352,7 @@ describe('computeProgress', () => {
         accuracy: 85,
         avgResponseMs: 1500,
         hands: 25,
+        totalPrompts: 10,
       })
     })
   })

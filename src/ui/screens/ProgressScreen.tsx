@@ -15,7 +15,7 @@ interface ProgressScreenProps {
   onShowHistory: () => void
 }
 
-type FilterRange = 'last10' | 'last30' | 'all'
+type FilterRange = 'last7' | 'last30' | 'all'
 
 const TIER_ORDER: MilestoneTier[] = ['bronze', 'silver', 'gold']
 
@@ -44,7 +44,7 @@ const TIER_STYLES: Record<MilestoneTier, { label: string; border: string; bg: st
 }
 
 export function ProgressScreen({ onBack, onShowHistory }: ProgressScreenProps) {
-  const [filter, setFilter] = useState<FilterRange>('all')
+  const [filter, setFilter] = useState<FilterRange>('last30')
 
   const { snap, milestoneProgress, unlockedSet } = useMemo(() => {
     const sessions = loadSessionHistory()
@@ -60,19 +60,35 @@ export function ProgressScreen({ onBack, onShowHistory }: ProgressScreenProps) {
     }
   }, [])
 
-  const filteredAccuracy = useMemo(() => {
-    const data = snap.sessions.map((s) => s.accuracy)
-    if (filter === 'last10') return data.slice(-10)
-    if (filter === 'last30') return data.slice(-30)
-    return data
+  const filteredSessions = useMemo(() => {
+    if (filter === 'all') return snap.sessions
+
+    const windowDays = filter === 'last7' ? 7 : 30
+    const toDayNumber = (date: string) => {
+      const [year, month, day] = date.split('-').map(Number)
+      return Math.floor(Date.UTC(year!, month! - 1, day!) / 86_400_000)
+    }
+    const today = new Date()
+    const todayDay = Math.floor(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()) / 86_400_000,
+    )
+    return snap.sessions.filter((s) => {
+      const ageDays = todayDay - toDayNumber(s.date)
+      return ageDays >= 0 && ageDays < windowDays
+    })
   }, [snap.sessions, filter])
 
-  const filteredSpeed = useMemo(() => {
-    const data = snap.sessions.map((s) => s.avgResponseMs / 1000)
-    if (filter === 'last10') return data.slice(-10)
-    if (filter === 'last30') return data.slice(-30)
-    return data
-  }, [snap.sessions, filter])
+  const filteredAccuracy = useMemo(
+    () => filteredSessions.map((s) => s.accuracy),
+    [filteredSessions],
+  )
+
+  const filteredSpeed = useMemo(
+    () => filteredSessions
+      .filter((s) => s.totalPrompts > 0)
+      .map((s) => s.avgResponseMs / 1000),
+    [filteredSessions],
+  )
 
   const hasData = snap.totalSessions > 0
 
@@ -112,7 +128,7 @@ export function ProgressScreen({ onBack, onShowHistory }: ProgressScreenProps) {
                     Accuracy Trend
                   </h3>
                   <div className="flex gap-1">
-                    {(['last10', 'last30', 'all'] as const).map((f) => (
+                    {(['last7', 'last30', 'all'] as const).map((f) => (
                       <button
                         key={f}
                         onClick={() => setFilter(f)}
@@ -122,7 +138,7 @@ export function ProgressScreen({ onBack, onShowHistory }: ProgressScreenProps) {
                             : 'text-white/25 hover:text-white/40'
                         }`}
                       >
-                        {f === 'last10' ? '10' : f === 'last30' ? '30' : 'All'}
+                        {f === 'last7' ? '7D' : f === 'last30' ? '30D' : 'All'}
                       </button>
                     ))}
                   </div>
@@ -143,7 +159,7 @@ export function ProgressScreen({ onBack, onShowHistory }: ProgressScreenProps) {
                   )}
                   <div className="flex items-center justify-between mt-2">
                     <span className="font-mono text-[10px] text-white/20">
-                      {filteredAccuracy.length} session{filteredAccuracy.length !== 1 ? 's' : ''}
+                      {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
                     </span>
                     {filteredAccuracy.length > 0 && (
                       <span className="font-mono text-[10px] text-gold-400/60">
@@ -196,7 +212,7 @@ export function ProgressScreen({ onBack, onShowHistory }: ProgressScreenProps) {
                   label="Speed"
                   value={`${(snap.recentSpeed / 1000).toFixed(1)}s`}
                   delta={snap.speedDelta}
-                  deltaLabel={`${snap.speedDelta >= 0 ? '' : '+'}${(-snap.speedDelta / 1000).toFixed(1)}s`}
+                  deltaLabel={`${(Math.abs(snap.speedDelta) / 1000).toFixed(1)}s`}
                   positiveIsGood
                 />
                 <div className="stat-card rounded-xl border border-white/5 bg-white/[0.02] p-3 sm:p-4">
@@ -386,6 +402,19 @@ function RecordCard({ label, value, date }: { label: string; value: string; date
   )
 }
 
+function formatProgress(progress: MilestoneProgress): string {
+  const isSpeed = progress.direction === 'atMost' && progress.target >= 1000
+  if (!Number.isFinite(progress.current)) {
+    return isSpeed
+      ? `—/${(progress.target / 1000).toFixed(1)}s`
+      : `—/${Math.round(progress.target)}`
+  }
+  if (isSpeed) {
+    return `${(progress.current / 1000).toFixed(1)}s/${(progress.target / 1000).toFixed(1)}s`
+  }
+  return `${Math.round(progress.current)}/${Math.round(progress.target)}`
+}
+
 function MilestoneCard({
   label,
   description,
@@ -401,7 +430,11 @@ function MilestoneCard({
 }) {
   const style = TIER_STYLES[tier]
   const pct = progress && progress.target > 0
-    ? Math.min(100, (progress.current / progress.target) * 100)
+    ? progress.direction === 'atMost'
+      ? Number.isFinite(progress.current) && progress.current > 0
+        ? Math.min(100, (progress.target / progress.current) * 100)
+        : 0
+      : Math.min(100, (progress.current / progress.target) * 100)
     : 0
 
   if (isUnlocked) {
@@ -425,7 +458,7 @@ function MilestoneCard({
         </span>
         {progress && (
           <span className="font-mono text-[9px] text-white/15">
-            {progress.current}/{progress.target}
+            {formatProgress(progress)}
           </span>
         )}
       </div>

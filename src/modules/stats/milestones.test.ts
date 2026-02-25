@@ -170,6 +170,7 @@ describe('checkMilestones', () => {
       expect(progress.isComplete).toBe(false)
       expect(progress.current).toBe(70)
       expect(progress.target).toBe(80)
+      expect(progress.direction).toBe('atLeast')
     })
   })
 
@@ -269,6 +270,7 @@ describe('checkMilestones', () => {
       expect(progress.isComplete).toBe(false)
       expect(progress.current).toBe(4000)
       expect(progress.target).toBe(3000)
+      expect(progress.direction).toBe('atMost')
     })
   })
 
@@ -386,5 +388,28 @@ describe('loadMilestones / saveMilestones', () => {
     localStorage.setItem('bjt_milestones', 'not json')
     const result = loadMilestones()
     expect(result.unlocked).toEqual([])
+  })
+
+  it('returns empty unlocked on wrong json shape', () => {
+    localStorage.setItem('bjt_milestones', JSON.stringify({ foo: 'bar' }))
+    const result = loadMilestones()
+    expect(result.unlocked).toEqual([])
+  })
+
+  it('filters invalid unlocked entries', () => {
+    localStorage.setItem(
+      'bjt_milestones',
+      JSON.stringify({
+        unlocked: [
+          { id: 'first_session', unlockedAt: '2024-01-01T10:00:00Z' },
+          { id: 123, unlockedAt: '2024-01-01T10:00:00Z' },
+          { id: 'bad_missing_date' },
+        ],
+      }),
+    )
+    const result = loadMilestones()
+    expect(result.unlocked).toEqual([
+      { id: 'first_session', unlockedAt: '2024-01-01T10:00:00Z' },
+    ])
   })
 })

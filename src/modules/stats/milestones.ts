@@ -6,6 +6,7 @@ export interface MilestoneProgress {
   isComplete: boolean
   current: number
   target: number
+  direction: 'atLeast' | 'atMost'
 }
 
 export interface MilestoneDef {
@@ -45,7 +46,7 @@ function accuracyMilestone(
 ): (sessions: SessionRecord[], practiceStreak: number) => MilestoneProgress {
   return (sessions) => {
     const current = bestAccuracy(sessions)
-    return { isComplete: current >= target, current, target }
+    return { isComplete: current >= target, current, target, direction: 'atLeast' }
   }
 }
 
@@ -54,7 +55,7 @@ function streakMilestone(
 ): (sessions: SessionRecord[], practiceStreak: number) => MilestoneProgress {
   return (sessions) => {
     const current = bestStreak(sessions)
-    return { isComplete: current >= target, current, target }
+    return { isComplete: current >= target, current, target, direction: 'atLeast' }
   }
 }
 
@@ -63,7 +64,12 @@ function speedMilestone(
 ): (sessions: SessionRecord[], practiceStreak: number) => MilestoneProgress {
   return (sessions) => {
     const current = bestSpeed(sessions)
-    return { isComplete: current < targetMs, current, target: targetMs }
+    return {
+      isComplete: Number.isFinite(current) && current < targetMs,
+      current,
+      target: targetMs,
+      direction: 'atMost',
+    }
   }
 }
 
@@ -71,7 +77,12 @@ function practiceStreakMilestone(
   target: number,
 ): (sessions: SessionRecord[], practiceStreak: number) => MilestoneProgress {
   return (_sessions, practiceStreak) => {
-    return { isComplete: practiceStreak >= target, current: practiceStreak, target }
+    return {
+      isComplete: practiceStreak >= target,
+      current: practiceStreak,
+      target,
+      direction: 'atLeast',
+    }
   }
 }
 
@@ -86,7 +97,12 @@ export const MILESTONES: MilestoneDef[] = [
     description: 'Complete your first session',
     check: (sessions) => {
       const current = sessions.length
-      return { isComplete: current >= 1, current: Math.min(current, 1), target: 1 }
+      return {
+        isComplete: current >= 1,
+        current: Math.min(current, 1),
+        target: 1,
+        direction: 'atLeast',
+      }
     },
   },
   {
@@ -177,7 +193,7 @@ export const MILESTONES: MilestoneDef[] = [
     description: 'Complete 50 sessions',
     check: (sessions) => {
       const current = sessions.length
-      return { isComplete: current >= 50, current, target: 50 }
+      return { isComplete: current >= 50, current, target: 50, direction: 'atLeast' }
     },
   },
 ]
@@ -215,7 +231,23 @@ export function loadMilestones(): PersistedMilestones {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { unlocked: [] }
-    return JSON.parse(raw) as PersistedMilestones
+    const parsed = JSON.parse(raw) as unknown
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      !('unlocked' in parsed) ||
+      !Array.isArray((parsed as { unlocked: unknown }).unlocked)
+    ) {
+      return { unlocked: [] }
+    }
+    const unlocked = (parsed as { unlocked: unknown[] }).unlocked.filter(
+      (entry): entry is { id: string; unlockedAt: string } =>
+        typeof entry === 'object' &&
+        entry !== null &&
+        typeof (entry as { id?: unknown }).id === 'string' &&
+        typeof (entry as { unlockedAt?: unknown }).unlockedAt === 'string',
+    )
+    return { unlocked }
   } catch {
     return { unlocked: [] }
   }

@@ -867,7 +867,7 @@ Use the frontend-design skill (`@frontend-design:frontend-design`) with these ar
 
 The screen layout (top to bottom):
 1. Header with back button + "Progress" title
-2. Hero sparkline — accuracy trend, with last 10 / last 30 / all filter pills
+2. Hero sparkline — accuracy trend, with last 7 days / last 30 days / all filter pills
 3. 4 stat cards (2x2): accuracy delta, speed delta, practice streak, total sessions
 4. Personal records row (best accuracy, fastest speed, longest streak, most hands)
 5. Milestones section — 3 tiers (bronze/silver/gold), unlocked=gold+date, locked=grey+progress bar

@@ -1,3 +1,5 @@
+import { useId } from 'react'
+
 interface SparklineProps {
   data: number[]
   width?: number
@@ -15,6 +17,7 @@ export function Sparkline({
   showDots = false,
   className = '',
 }: SparklineProps) {
+  const gradientId = useId().replace(/:/g, '_')
   if (data.length < 2) return null
 
   const min = Math.min(...data)
@@ -44,12 +47,12 @@ export function Sparkline({
       style={{ width: '100%', height: 'auto' }}
     >
       <defs>
-        <linearGradient id="sparkline-fill" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.2" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={areaPath} fill="url(#sparkline-fill)" />
+      <path d={areaPath} fill={`url(#${gradientId})`} />
       <polyline
         points={polyline}
         fill="none"
