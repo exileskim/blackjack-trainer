@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   activeSession: 'bjt_active_session',
   sessionHistory: 'bjt_session_history',
   settings: 'bjt_settings',
+  milestones: 'bjt_milestones',
 } as const
 
 /** Serializable snapshot of a session for autosave/recovery */

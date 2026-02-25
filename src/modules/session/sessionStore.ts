@@ -7,6 +7,7 @@ import {
   saveActiveSession,
   clearActiveSession,
   saveSessionRecord,
+  loadSessionHistory,
   saveSettings,
   loadSettings,
   type SessionSnapshot,
@@ -31,6 +32,8 @@ import {
 } from '@/modules/prompts/promptScheduler.ts'
 import { DEFAULT_ACCESSIBILITY_SETTINGS } from '@/modules/accessibility/settings.ts'
 import { recentMissRate } from '@/modules/stats/weakSpotAnalyzer.ts'
+import { checkMilestones, loadMilestones, saveMilestones } from '@/modules/stats/milestones.ts'
+import { computeProgress } from '@/modules/stats/progressTracker.ts'
 import { getBasicStrategyAction } from '@/modules/strategy/basicStrategy.ts'
 import { getDeviationAction } from '@/modules/strategy/deviations.ts'
 import { shouldTakeInsurance } from '@/modules/strategy/insurance.ts'
@@ -97,6 +100,9 @@ export interface SessionState {
   activePromptType: PromptType | null
   promptExpectedAction: PlayerAction | null
 
+  // Milestones
+  newMilestones: string[]
+
   // Actions
   startSession: (mode: TrainingMode, rules: RuleConfig) => void
   dealHand: () => void
@@ -159,6 +165,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   enabledPromptTypes: initialPromptTypes,
   activePromptType: null,
   promptExpectedAction: null,
+  newMilestones: [],
 
   startSession(mode, rules) {
     const state = get()
@@ -685,6 +692,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const state = get()
     if (state.phase === 'idle' || state.phase === 'completed') return
 
+    let newlyUnlocked: string[] = []
+
     // Save to history
     if (state.sessionId && state.handsPlayed > 0) {
       const checks = state.countChecks
@@ -715,10 +724,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         },
       }
       saveSessionRecord(record)
+
+      // Check for newly unlocked milestones
+      const allSessions = loadSessionHistory()
+      const progress = computeProgress(allSessions)
+      const persisted = loadMilestones()
+      const alreadyUnlocked = persisted.unlocked.map((m) => m.id)
+      const result = checkMilestones(allSessions, progress.currentStreak, alreadyUnlocked)
+      newlyUnlocked = result.newlyUnlocked
+
+      if (newlyUnlocked.length > 0) {
+        const now = new Date().toISOString()
+        persisted.unlocked.push(...newlyUnlocked.map((id) => ({ id, unlockedAt: now })))
+        saveMilestones(persisted)
+      }
     }
 
     clearActiveSession()
-    set({ phase: 'completed', pendingPrompt: false, promptStartTime: null, insuranceOffer: null })
+    set({ phase: 'completed', pendingPrompt: false, promptStartTime: null, insuranceOffer: null, newMilestones: newlyUnlocked })
   },
 
   resetToIdle() {

@@ -4,7 +4,6 @@ import {
   checkMilestones,
   loadMilestones,
   saveMilestones,
-  type MilestoneDef,
   type PersistedMilestones,
 } from './milestones.ts'
 import type { SessionRecord } from '@/modules/persistence/repository.ts'
