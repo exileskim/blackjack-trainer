@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface CountPromptModalProps {
   isOpen: boolean
   handNumber: number
   onSubmit: (count: number) => void
+  onContinue: () => void
   lastResult?: {
     enteredCount: number
     expectedCount: number
@@ -16,37 +17,28 @@ export function CountPromptModal({
   isOpen,
   handNumber,
   onSubmit,
+  onContinue,
   lastResult,
 }: CountPromptModalProps) {
   const [input, setInput] = useState('')
-  const [showResult, setShowResult] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const showResult = !!lastResult
 
   useEffect(() => {
-    if (isOpen && !lastResult) {
-      setInput('')
-      setShowResult(false)
-      // Focus after animation
+    if (isOpen && !showResult) {
+      // Focus after animation for smoother entrance.
       const timer = setTimeout(() => inputRef.current?.focus(), 100)
       return () => clearTimeout(timer)
     }
-  }, [isOpen, lastResult])
+  }, [isOpen, showResult])
 
-  useEffect(() => {
-    if (lastResult) {
-      setShowResult(true)
-    }
-  }, [lastResult])
-
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault()
-      const val = parseInt(input, 10)
-      if (isNaN(val)) return
-      onSubmit(val)
-    },
-    [input, onSubmit],
-  )
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const val = parseInt(input, 10)
+    if (isNaN(val)) return
+    onSubmit(val)
+    setInput('')
+  }
 
   if (!isOpen) return null
 
@@ -159,6 +151,14 @@ export function CountPromptModal({
                     </div>
                   )}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={onContinue}
+                  className="w-full rounded-xl bg-gold-400/15 border border-gold-400/30 px-4 py-3 font-mono text-sm font-semibold text-gold-400 uppercase tracking-wider hover:bg-gold-400/25 transition-colors"
+                >
+                  Continue <span className="kbd ml-2">N</span>
+                </button>
               </div>
             </>
           ) : null}

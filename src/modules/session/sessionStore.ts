@@ -4,7 +4,15 @@ import type { SessionPhase, TrainingMode } from '@/modules/domain/enums.ts'
 import type { RuleConfig, CountCheck, Hand, DealerHand } from '@/modules/domain/types.ts'
 import { createShoe, type Shoe } from '@/modules/blackjack/shoe.ts'
 import { updateRunningCountSingle } from '@/modules/counting/hiLo.ts'
-import { isBlackjack, isBust, shouldDealerHit } from '@/modules/blackjack/rules.ts'
+import {
+  canDouble,
+  canDoubleAfterSplit,
+  canSplit,
+  canSurrender,
+  isBlackjack,
+  isBust,
+  shouldDealerHit,
+} from '@/modules/blackjack/rules.ts'
 import { resolveOutcome } from '@/modules/blackjack/handResolver.ts'
 import { createPromptScheduler, type PromptScheduler } from '@/modules/prompts/promptScheduler.ts'
 import { assertTransition } from './sessionMachine.ts'
@@ -155,9 +163,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
       // Dealer plays out if needed
       const dealerCards = [...dealerHand.cards]
-      if (!playerBj || isBlackjack(dealerHand.cards)) {
-        // No more dealer draws needed
-      } else {
+      const dealerBj = isBlackjack(dealerHand.cards)
+      if (!playerBj && !dealerBj) {
         while (shouldDealerHit(dealerCards, state.ruleConfig)) {
           const card = shoe.drawCard()
           dealerCards.push(card)
@@ -199,14 +206,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   playerHit() {
     const state = get()
-    assertTransition(state.phase, 'dealing')
+    if (state.phase !== 'awaitingPlayerAction') return
+    assertTransition('awaitingPlayerAction', 'dealing')
 
     const shoe = state.shoe!
     const card = shoe.drawCard()
-    let rc = updateRunningCountSingle(state.runningCount, card)
+    const rc = updateRunningCountSingle(state.runningCount, card)
 
     const hands = [...state.playerHands]
     const activeHand = hands[state.activeHandIndex]!
+    if (activeHand.outcome) return
     const updatedHand: Hand = {
       ...activeHand,
       cards: [...activeHand.cards, card],
@@ -240,9 +249,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   playerStand() {
     const state = get()
+    if (state.phase !== 'awaitingPlayerAction') return
+    assertTransition('awaitingPlayerAction', 'dealing')
 
     const hands = [...state.playerHands]
     const activeHand = hands[state.activeHandIndex]!
+    if (activeHand.outcome) return
     hands[state.activeHandIndex] = {
       ...activeHand,
       playerDecisionLog: [...activeHand.playerDecisionLog, 'stand'],
@@ -260,12 +272,20 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   playerDouble() {
     const state = get()
-    const shoe = state.shoe!
-    const card = shoe.drawCard()
-    let rc = updateRunningCountSingle(state.runningCount, card)
+    if (state.phase !== 'awaitingPlayerAction') return
+    assertTransition('awaitingPlayerAction', 'dealing')
 
     const hands = [...state.playerHands]
     const activeHand = hands[state.activeHandIndex]!
+    if (activeHand.outcome) return
+    const canDoubleThisHand =
+      canDouble(activeHand) &&
+      (!activeHand.isSplit || canDoubleAfterSplit(activeHand, state.ruleConfig))
+    if (!canDoubleThisHand) return
+
+    const shoe = state.shoe!
+    const card = shoe.drawCard()
+    const rc = updateRunningCountSingle(state.runningCount, card)
     const doubledHand: Hand = {
       ...activeHand,
       cards: [...activeHand.cards, card],
@@ -292,9 +312,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   playerSplit() {
     const state = get()
-    const shoe = state.shoe!
+    if (state.phase !== 'awaitingPlayerAction') return
+    assertTransition('awaitingPlayerAction', 'dealing')
+
     const hands = [...state.playerHands]
     const activeHand = hands[state.activeHandIndex]!
+    if (activeHand.outcome || !canSplit(activeHand)) return
+
+    const shoe = state.shoe!
 
     const card1 = shoe.drawCard()
     const card2 = shoe.drawCard()
@@ -328,8 +353,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   playerSurrender() {
     const state = get()
+    if (state.phase !== 'awaitingPlayerAction') return
+    assertTransition('awaitingPlayerAction', 'dealing')
+
     const hands = [...state.playerHands]
     const activeHand = hands[state.activeHandIndex]!
+    if (activeHand.outcome || !canSurrender(activeHand, state.ruleConfig)) return
     hands[state.activeHandIndex] = {
       ...activeHand,
       outcome: 'surrender',

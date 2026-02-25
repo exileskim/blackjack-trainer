@@ -63,7 +63,9 @@ describe('promptScheduler', () => {
     for (let run = 0; run < 500; run++) {
       thresholds.push(scheduler.getNextThreshold())
       // Advance past threshold
-      while (!scheduler.onHandResolved()) {}
+      while (!scheduler.onHandResolved()) {
+        // Advance until this cycle triggers.
+      }
       scheduler.onPromptSubmitted()
     }
 

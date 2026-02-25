@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSessionStore } from '@/modules/session/sessionStore.ts'
 import { handTotal } from '@/modules/blackjack/rules.ts'
 import { DEAL_SPEED_MS } from '@/modules/domain/enums.ts'
@@ -6,7 +6,7 @@ import { HandRail } from '@/ui/components/HandRail.tsx'
 import { StatusBar } from '@/ui/components/StatusBar.tsx'
 import { ActionBar } from '@/ui/components/ActionBar.tsx'
 import { CountPromptModal } from '@/ui/components/CountPromptModal.tsx'
-import { canSplit, canDouble, canSurrender } from '@/modules/blackjack/rules.ts'
+import { canSplit, canDouble, canDoubleAfterSplit, canSurrender } from '@/modules/blackjack/rules.ts'
 
 interface TableScreenProps {
   onEndSession: () => void
@@ -21,6 +21,20 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
     delta: number
   } | null>(null)
   const autoDealTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const playerHand = store.playerHands[store.activeHandIndex]
+  const canDoubleActive =
+    store.phase === 'awaitingPlayerAction' &&
+    !!playerHand &&
+    canDouble(playerHand) &&
+    (!playerHand.isSplit || canDoubleAfterSplit(playerHand, store.ruleConfig))
+  const canSplitActive =
+    store.phase === 'awaitingPlayerAction' &&
+    !!playerHand &&
+    canSplit(playerHand)
+  const canSurrenderActive =
+    store.phase === 'awaitingPlayerAction' &&
+    !!playerHand &&
+    canSurrender(playerHand, store.ruleConfig)
 
   const accuracy =
     store.countChecks.length > 0
@@ -48,8 +62,8 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
   }, [store.phase])
 
   // Keyboard shortcuts
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       // Don't capture when prompt modal is open (it handles its own input)
       if (store.phase === 'countPromptOpen' && !lastPromptResult) return
 
@@ -83,11 +97,15 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
           break
         case 'd':
         case 'D':
-          if (store.phase === 'awaitingPlayerAction') store.playerDouble()
+          if (canDoubleActive) store.playerDouble()
           break
         case 'p':
         case 'P':
-          if (store.phase === 'awaitingPlayerAction') store.playerSplit()
+          if (canSplitActive) store.playerSplit()
+          break
+        case 'r':
+        case 'R':
+          if (canSurrenderActive) store.playerSurrender()
           break
         case 'Escape':
           if (lastPromptResult) {
@@ -96,31 +114,35 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
           }
           break
       }
-    },
-    [store.phase, lastPromptResult],
-  )
+    }
 
-  useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  }, [
+    store,
+    lastPromptResult,
+    canDoubleActive,
+    canSplitActive,
+    canSurrenderActive,
+  ])
 
-  const handlePromptSubmit = useCallback(
-    (enteredCount: number) => {
-      const expected = store.runningCount
-      const delta = enteredCount - expected
-      setLastPromptResult({
-        enteredCount,
-        expectedCount: expected,
-        isCorrect: delta === 0,
-        delta,
-      })
-      store.submitCount(enteredCount)
-    },
-    [store.runningCount],
-  )
+  const handlePromptSubmit = (enteredCount: number) => {
+    const expected = store.runningCount
+    const delta = enteredCount - expected
+    setLastPromptResult({
+      enteredCount,
+      expectedCount: expected,
+      isCorrect: delta === 0,
+      delta,
+    })
+    store.submitCount(enteredCount)
+  }
 
-  const playerHand = store.playerHands[store.activeHandIndex]
+  const handlePromptContinue = () => {
+    setLastPromptResult(null)
+    store.dismissPrompt()
+  }
+
   const dealerTotal = store.dealerHand
     ? handTotal(
         store.dealerHand.holeCardRevealed
@@ -197,19 +219,13 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         canHit={store.phase === 'awaitingPlayerAction'}
         canStand={store.phase === 'awaitingPlayerAction'}
         canDouble={
-          store.phase === 'awaitingPlayerAction' &&
-          !!playerHand &&
-          canDouble(playerHand)
+          canDoubleActive
         }
         canSplit={
-          store.phase === 'awaitingPlayerAction' &&
-          !!playerHand &&
-          canSplit(playerHand)
+          canSplitActive
         }
         canSurrender={
-          store.phase === 'awaitingPlayerAction' &&
-          !!playerHand &&
-          canSurrender(playerHand, store.ruleConfig)
+          canSurrenderActive
         }
         onHit={store.playerHit}
         onStand={store.playerStand}
@@ -239,6 +255,7 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         isOpen={store.phase === 'countPromptOpen' || !!lastPromptResult}
         handNumber={store.handNumber}
         onSubmit={handlePromptSubmit}
+        onContinue={handlePromptContinue}
         lastResult={lastPromptResult}
       />
     </div>
