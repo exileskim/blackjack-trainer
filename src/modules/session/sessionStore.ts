@@ -33,6 +33,7 @@ import { DEFAULT_ACCESSIBILITY_SETTINGS } from '@/modules/accessibility/settings
 import { recentMissRate } from '@/modules/stats/weakSpotAnalyzer.ts'
 import { getBasicStrategyAction } from '@/modules/strategy/basicStrategy.ts'
 import { getDeviationAction } from '@/modules/strategy/deviations.ts'
+import { shouldTakeInsurance } from '@/modules/strategy/insurance.ts'
 import { computeTrueCount, estimateDecksRemaining } from '@/modules/counting/trueCount.ts'
 import { assertTransition } from './sessionMachine.ts'
 
@@ -42,6 +43,12 @@ export interface ActionFeedback {
   readonly recommendedAction: PlayerAction
   readonly isCorrect: boolean
   readonly deviationName: string | null
+}
+
+export interface InsuranceOffer {
+  readonly evenMoney: boolean
+  readonly recommendedTake: boolean
+  readonly trueCount: number
 }
 
 export interface SessionState {
@@ -82,6 +89,9 @@ export interface SessionState {
   strategyCoachEnabled: boolean
   strategyDecisionLog: ActionFeedback[]
 
+  // Insurance / even money state
+  insuranceOffer: InsuranceOffer | null
+
   // Prompt types (BJ-036)
   enabledPromptTypes: PromptType[]
   activePromptType: PromptType | null
@@ -96,6 +106,8 @@ export interface SessionState {
   playerDouble: () => void
   playerSplit: () => void
   playerSurrender: () => void
+  takeInsurance: () => void
+  declineInsurance: () => void
   submitCount: (enteredCount: number) => void
   submitBestAction: (enteredAction: PlayerAction) => void
   dismissPrompt: () => void
@@ -143,6 +155,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   lastActionFeedback: null,
   strategyCoachEnabled: true,
   strategyDecisionLog: [],
+  insuranceOffer: null,
   enabledPromptTypes: initialPromptTypes,
   activePromptType: null,
   promptExpectedAction: null,
@@ -173,6 +186,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       startedAt: new Date().toISOString(),
       lastActionFeedback: null,
       strategyDecisionLog: [],
+      insuranceOffer: null,
       promptExpectedAction: null,
     })
   },
@@ -221,6 +235,31 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     // Check for player blackjack or dealer showing ace scenarios
     const playerBj = isBlackjack(playerHand.cards)
+    const dealerShowsAce = dealerHand.cards[0]!.rank === 'A'
+
+    if (state.mode === 'playAndCount' && dealerShowsAce) {
+      const decksRemaining = estimateDecksRemaining(shoe.cardsRemaining())
+      const trueCount = computeTrueCount(rc, decksRemaining)
+      const recommendedTake = shouldTakeInsurance(trueCount)
+
+      assertTransition('dealing', 'awaitingInsurance')
+      set({
+        phase: 'awaitingInsurance',
+        handNumber: handNum,
+        runningCount: rc,
+        playerHands: [playerHand],
+        dealerHand,
+        activeHandIndex: 0,
+        lastActionFeedback: null,
+        insuranceOffer: {
+          evenMoney: playerBj,
+          recommendedTake,
+          trueCount,
+        },
+        promptExpectedAction: null,
+      })
+      return
+    }
 
     if (state.mode === 'countingDrill' || playerBj) {
       // In counting drill mode or player BJ, enter dealer turn sequence.
@@ -248,6 +287,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         dealerHand: { ...dealerHand, holeCardRevealed: true },
         activeHandIndex: 0,
         dealerDrawQueue: drawQueue,
+        insuranceOffer: null,
         promptExpectedAction: null,
       })
     } else {
@@ -269,6 +309,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         dealerHand,
         activeHandIndex: 0,
         lastActionFeedback: null,
+        insuranceOffer: null,
         promptExpectedAction: recommended.action,
       })
     }
@@ -287,56 +328,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         if (h.outcome) return h
         return { ...h, outcome: resolveOutcome(h.cards, dealerHand.cards) }
       })
-
-      const scheduler = state.promptScheduler!
-      const eligiblePromptTypes = state.enabledPromptTypes.filter((type) => {
-        if (type !== 'bestAction') return true
-        return state.mode === 'playAndCount' && state.promptExpectedAction !== null
-      })
-      const shouldPrompt = scheduler.onHandResolved() && eligiblePromptTypes.length > 0
-      const newPlayed = state.handsPlayed + 1
-      const nextPhase = shouldPrompt ? 'countPromptOpen' : 'handResolved'
-      assertTransition('dealerTurn', nextPhase)
-
-      // Pick a random prompt type from eligible types
-      const promptType = shouldPrompt
-        ? eligiblePromptTypes[Math.floor(Math.random() * eligiblePromptTypes.length)]!
-        : null
-
-      set({
-        phase: nextPhase,
-        playerHands: resolvedHands,
-        handsPlayed: newPlayed,
-        dealerDrawQueue: [],
-        pendingPrompt: shouldPrompt,
-        promptStartTime: shouldPrompt ? Date.now() : null,
-        activePromptType: promptType,
-        promptExpectedAction:
-          promptType === 'bestAction' ? state.promptExpectedAction : null,
-      })
-
-      // Autosave after every resolved hand
-      const updated = get()
-      if (updated.sessionId && updated.shoe && updated.promptScheduler) {
-        saveActiveSession({
-          sessionId: updated.sessionId,
-          phase: updated.phase,
-          mode: updated.mode,
-          ruleConfig: updated.ruleConfig,
-          runningCount: updated.runningCount,
-          handNumber: updated.handNumber,
-          handsPlayed: newPlayed,
-          countChecks: updated.countChecks,
-          pendingPrompt: updated.pendingPrompt,
-          promptStartTime: updated.promptStartTime,
-          activePromptType: updated.activePromptType,
-          promptExpectedAction: updated.promptExpectedAction,
-          shoeState: updated.shoe.serialize(),
-          schedulerState: updated.promptScheduler.serialize(),
-          startedAt: updated.startedAt ?? new Date().toISOString(),
-          savedAt: new Date().toISOString(),
-        })
-      }
+      finalizeResolvedHands(set, get, resolvedHands)
     } else {
       // Reveal next dealer card
       const [nextCard, ...remaining] = queue
@@ -576,6 +568,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
+  takeInsurance() {
+    resolveInsuranceDecision(set, get, true)
+  },
+
+  declineInsurance() {
+    resolveInsuranceDecision(set, get, false)
+  },
+
   submitCount(enteredCount: number) {
     const state = get()
     if (state.phase !== 'countPromptOpen') return
@@ -640,6 +640,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       phase: 'handResolved',
       pendingPrompt: false,
       promptStartTime: null,
+      insuranceOffer: null,
       activePromptType: null,
       promptExpectedAction: null,
     })
@@ -717,7 +718,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
 
     clearActiveSession()
-    set({ phase: 'completed', pendingPrompt: false, promptStartTime: null })
+    set({ phase: 'completed', pendingPrompt: false, promptStartTime: null, insuranceOffer: null })
   },
 
   resetToIdle() {
@@ -741,6 +742,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       startedAt: null,
       lastActionFeedback: null,
       strategyDecisionLog: [],
+      insuranceOffer: null,
       activePromptType: null,
       promptExpectedAction: null,
     })
@@ -828,6 +830,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       countChecks: snapshot.countChecks,
       handsPlayed: snapshot.handsPlayed,
       startedAt: snapshot.startedAt,
+      insuranceOffer: null,
       activePromptType:
         restoredPhase === 'countPromptOpen'
           ? snapshot.activePromptType ?? 'runningCount'
@@ -862,6 +865,131 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 }))
 
+function finalizeResolvedHands(
+  set: (partial: Partial<SessionState>) => void,
+  get: () => SessionState,
+  resolvedHands: Hand[],
+): void {
+  const state = get()
+  const scheduler = state.promptScheduler!
+  const eligiblePromptTypes = state.enabledPromptTypes.filter((type) => {
+    if (type !== 'bestAction') return true
+    return state.mode === 'playAndCount' && state.promptExpectedAction !== null
+  })
+  const shouldPrompt = scheduler.onHandResolved() && eligiblePromptTypes.length > 0
+  const newPlayed = state.handsPlayed + 1
+  const nextPhase = shouldPrompt ? 'countPromptOpen' : 'handResolved'
+  assertTransition(state.phase, nextPhase)
+
+  const promptType = shouldPrompt
+    ? eligiblePromptTypes[Math.floor(Math.random() * eligiblePromptTypes.length)]!
+    : null
+
+  set({
+    phase: nextPhase,
+    playerHands: resolvedHands,
+    handsPlayed: newPlayed,
+    dealerDrawQueue: [],
+    pendingPrompt: shouldPrompt,
+    promptStartTime: shouldPrompt ? Date.now() : null,
+    activePromptType: promptType,
+    insuranceOffer: null,
+    promptExpectedAction:
+      promptType === 'bestAction' ? state.promptExpectedAction : null,
+  })
+
+  const updated = get()
+  if (updated.sessionId && updated.shoe && updated.promptScheduler) {
+    saveActiveSession({
+      sessionId: updated.sessionId,
+      phase: updated.phase,
+      mode: updated.mode,
+      ruleConfig: updated.ruleConfig,
+      runningCount: updated.runningCount,
+      handNumber: updated.handNumber,
+      handsPlayed: newPlayed,
+      countChecks: updated.countChecks,
+      pendingPrompt: updated.pendingPrompt,
+      promptStartTime: updated.promptStartTime,
+      activePromptType: updated.activePromptType,
+      promptExpectedAction: updated.promptExpectedAction,
+      shoeState: updated.shoe.serialize(),
+      schedulerState: updated.promptScheduler.serialize(),
+      startedAt: updated.startedAt ?? new Date().toISOString(),
+      savedAt: new Date().toISOString(),
+    })
+  }
+}
+
+function resolveInsuranceDecision(
+  set: (partial: Partial<SessionState>) => void,
+  get: () => SessionState,
+  takeInsurance: boolean,
+): void {
+  const state = get()
+  if (state.phase !== 'awaitingInsurance') return
+  if (!state.shoe || !state.dealerHand || state.playerHands.length === 0) return
+  if (state.dealerHand.cards[0]!.rank !== 'A') return
+
+  const dealerHand = state.dealerHand
+  const playerHand = state.playerHands[0]!
+  const dealerHasBlackjack = isBlackjack(dealerHand.cards)
+  const playerHasBlackjack = isBlackjack(playerHand.cards)
+
+  if (dealerHasBlackjack) {
+    const updatedRc = updateRunningCountSingle(state.runningCount, dealerHand.cards[1]!)
+    const outcome = playerHasBlackjack
+      ? (takeInsurance ? 'win' : 'push')
+      : (takeInsurance ? 'push' : 'loss')
+    const resolvedHand: Hand = { ...playerHand, outcome }
+
+    set({
+      runningCount: updatedRc,
+      dealerHand: { ...dealerHand, holeCardRevealed: true },
+      playerHands: [resolvedHand],
+      dealerDrawQueue: [],
+      insuranceOffer: null,
+    })
+    finalizeResolvedHands(set, get, [resolvedHand])
+    return
+  }
+
+  if (playerHasBlackjack) {
+    // Even money is equivalent to taking insurance with blackjack:
+    // hand resolves immediately at 1:1 instead of waiting for dealer play.
+    const updatedRc = updateRunningCountSingle(state.runningCount, dealerHand.cards[1]!)
+    const resolvedHand: Hand = {
+      ...playerHand,
+      outcome: takeInsurance ? 'win' : 'blackjack',
+    }
+
+    set({
+      runningCount: updatedRc,
+      dealerHand: { ...dealerHand, holeCardRevealed: true },
+      playerHands: [resolvedHand],
+      dealerDrawQueue: [],
+      insuranceOffer: null,
+    })
+    finalizeResolvedHands(set, get, [resolvedHand])
+    return
+  }
+
+  const recommended = getRecommendedAction(
+    playerHand.cards,
+    dealerHand.cards[0]!,
+    state.ruleConfig,
+    state.runningCount,
+    state.shoe,
+    false,
+  )
+  assertTransition('awaitingInsurance', 'awaitingPlayerAction')
+  set({
+    phase: 'awaitingPlayerAction',
+    insuranceOffer: null,
+    promptExpectedAction: recommended.action,
+  })
+}
+
 function normalizeEnabledPromptTypes(types: PromptType[] | undefined): PromptType[] {
   const normalized = (types ?? []).filter((t): t is PromptType =>
     (PROMPT_TYPES as readonly string[]).includes(t),
@@ -884,6 +1012,7 @@ function persistPromptCheck(
     countChecks: updatedChecks,
     pendingPrompt: false,
     promptStartTime: null,
+    insuranceOffer: null,
     promptExpectedAction: null,
   })
 

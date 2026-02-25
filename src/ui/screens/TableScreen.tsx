@@ -22,7 +22,7 @@ function currentRoundPhase(
   dealerDrawQueueLen: number,
 ): RoundPhase {
   if (sessionPhase === 'ready' || sessionPhase === 'dealing') return 'deal'
-  if (sessionPhase === 'awaitingPlayerAction') return 'player'
+  if (sessionPhase === 'awaitingPlayerAction' || sessionPhase === 'awaitingInsurance') return 'player'
   if (sessionPhase === 'dealerTurn') {
     return dealerDrawQueueLen > 0 ? 'draw' : 'reveal'
   }
@@ -78,6 +78,7 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
       : null
 
   const isDealerTurn = store.phase === 'dealerTurn'
+  const isAwaitingInsurance = store.phase === 'awaitingInsurance'
   const isResolved = store.phase === 'handResolved' || store.phase === 'countPromptOpen'
 
   // ─── BJ-030: Auto-advance dealer turn on timer ─────────────────────────
@@ -172,6 +173,14 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         case 'r':
         case 'R':
           if (canSurrenderActive) store.playerSurrender()
+          break
+        case 'i':
+        case 'I':
+          if (store.phase === 'awaitingInsurance') store.takeInsurance()
+          break
+        case 'x':
+        case 'X':
+          if (store.phase === 'awaitingInsurance') store.declineInsurance()
           break
         case 'ArrowUp':
           e.preventDefault()
@@ -385,15 +394,33 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
           </div>
         )}
 
+        {isAwaitingInsurance && store.insuranceOffer && (
+          <div
+            className="flex items-center justify-center gap-2 px-3 sm:px-6 py-1.5 font-mono text-[10px] sm:text-[11px] text-gold-400/75"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-gold-400/70 flex-shrink-0" />
+            <span className="truncate">
+              {store.insuranceOffer.evenMoney ? 'Even money offer' : 'Insurance offer'}
+              {' '}at TC {store.insuranceOffer.trueCount >= 0 ? '+' : ''}{store.insuranceOffer.trueCount}.
+              {' '}BJA: {store.insuranceOffer.recommendedTake ? 'Take' : 'Decline'}.
+            </span>
+          </div>
+        )}
+
         {/* Action bar */}
         <ActionBar
           mode={store.mode}
           phase={store.phase}
+          insuranceOffer={store.insuranceOffer}
           canHit={store.phase === 'awaitingPlayerAction'}
           canStand={store.phase === 'awaitingPlayerAction'}
           canDouble={canDoubleActive}
           canSplit={canSplitActive}
           canSurrender={canSurrenderActive}
+          onTakeInsurance={store.takeInsurance}
+          onDeclineInsurance={store.declineInsurance}
           onHit={store.playerHit}
           onStand={store.playerStand}
           onDouble={store.playerDouble}
@@ -431,6 +458,7 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         {/* Screen reader announcements */}
         <div className="sr-only" aria-live="polite" aria-atomic="true">
           {store.phase === 'paused' && 'Session paused'}
+          {store.phase === 'awaitingInsurance' && 'Insurance decision pending'}
           {store.phase === 'dealerTurn' && 'Dealer is drawing'}
           {store.phase === 'handResolved' && `Hand ${store.handNumber} resolved`}
         </div>

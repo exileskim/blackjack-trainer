@@ -7,12 +7,13 @@ import type { SessionPhase } from '@/modules/domain/enums.ts'
 const TRANSITIONS: Record<SessionPhase, readonly SessionPhase[]> = {
   idle: ['ready'],
   ready: ['dealing'],
-  dealing: ['awaitingPlayerAction', 'dealerTurn', 'handResolved'],
+  dealing: ['awaitingInsurance', 'awaitingPlayerAction', 'dealerTurn', 'handResolved'],
+  awaitingInsurance: ['awaitingPlayerAction', 'handResolved', 'countPromptOpen', 'paused'],
   awaitingPlayerAction: ['dealing', 'dealerTurn', 'paused'],
   dealerTurn: ['handResolved', 'countPromptOpen'],
   handResolved: ['dealing', 'countPromptOpen', 'completed', 'paused'],
   countPromptOpen: ['handResolved', 'paused'],
-  paused: ['ready', 'dealing', 'awaitingPlayerAction', 'dealerTurn', 'handResolved', 'countPromptOpen', 'completed'],
+  paused: ['ready', 'dealing', 'awaitingInsurance', 'awaitingPlayerAction', 'dealerTurn', 'handResolved', 'countPromptOpen', 'completed'],
   completed: ['idle'],
 }
 

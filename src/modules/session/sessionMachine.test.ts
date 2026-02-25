@@ -15,6 +15,18 @@ describe('sessionMachine', () => {
       expect(canTransition('dealing', 'awaitingPlayerAction')).toBe(true)
     })
 
+    it('allows dealing -> awaitingInsurance', () => {
+      expect(canTransition('dealing', 'awaitingInsurance')).toBe(true)
+    })
+
+    it('allows awaitingInsurance -> awaitingPlayerAction', () => {
+      expect(canTransition('awaitingInsurance', 'awaitingPlayerAction')).toBe(true)
+    })
+
+    it('allows awaitingInsurance -> handResolved', () => {
+      expect(canTransition('awaitingInsurance', 'handResolved')).toBe(true)
+    })
+
     it('allows dealing -> handResolved (counting drill)', () => {
       expect(canTransition('dealing', 'handResolved')).toBe(true)
     })
@@ -41,6 +53,10 @@ describe('sessionMachine', () => {
 
     it('allows paused -> dealing (resume)', () => {
       expect(canTransition('paused', 'dealing')).toBe(true)
+    })
+
+    it('allows paused -> awaitingInsurance (resume)', () => {
+      expect(canTransition('paused', 'awaitingInsurance')).toBe(true)
     })
 
     it('allows completed -> idle', () => {

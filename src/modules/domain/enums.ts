@@ -10,6 +10,7 @@ export type SessionPhase =
   | 'idle'
   | 'ready'
   | 'dealing'
+  | 'awaitingInsurance'
   | 'awaitingPlayerAction'
   | 'dealerTurn'
   | 'handResolved'

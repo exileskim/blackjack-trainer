@@ -33,6 +33,7 @@ function resetStore() {
     countChecks: [],
     handsPlayed: 0,
     startedAt: null,
+    insuranceOffer: null,
   })
 }
 
@@ -188,6 +189,10 @@ describe('play and count stress test', () => {
       expect(['ready', 'handResolved']).toContain(before.phase)
       before.dealHand()
 
+      if (useSessionStore.getState().phase === 'awaitingInsurance') {
+        useSessionStore.getState().declineInsurance()
+      }
+
       // In play+count, we need to make decisions
       let safety = 0
       while (useSessionStore.getState().phase === 'awaitingPlayerAction' && safety < 20) {
@@ -228,6 +233,10 @@ describe('play and count stress test', () => {
       const before = useSessionStore.getState()
       expect(['ready', 'handResolved']).toContain(before.phase)
       before.dealHand()
+
+      if (useSessionStore.getState().phase === 'awaitingInsurance') {
+        useSessionStore.getState().declineInsurance()
+      }
 
       // Hit until bust or hand resolves
       let safety = 0

@@ -34,6 +34,11 @@ export interface DeviationSourceRow {
   readonly group: 'I18' | 'Fab4' | 'BJA'
 }
 
+export interface InsuranceSourceRule {
+  readonly tcThreshold: number
+  readonly comparison: 'gte' | 'lte'
+}
+
 const HARD_H17: RawAction[][] = [
   ['H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H'],
   ['H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H'],
@@ -170,5 +175,9 @@ export const BJA_H17_2019_SOURCE = {
     pairsNoDasOverrides: PAIRS_NO_DAS_OVERRIDES,
     pairsS17Overrides: PAIRS_S17_OVERRIDES,
   },
+  insurance: {
+    tcThreshold: 3,
+    comparison: 'gte',
+  } as const satisfies InsuranceSourceRule,
   deviations: BJA_H17_DEVIATIONS,
 } as const

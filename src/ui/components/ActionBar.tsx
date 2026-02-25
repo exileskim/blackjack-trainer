@@ -1,11 +1,18 @@
 interface ActionBarProps {
   mode: 'countingDrill' | 'playAndCount'
   phase: string
+  insuranceOffer: {
+    evenMoney: boolean
+    recommendedTake: boolean
+    trueCount: number
+  } | null
   canHit: boolean
   canStand: boolean
   canDouble: boolean
   canSplit: boolean
   canSurrender: boolean
+  onTakeInsurance: () => void
+  onDeclineInsurance: () => void
   onHit: () => void
   onStand: () => void
   onDouble: () => void
@@ -52,11 +59,14 @@ function ActionButton({
 export function ActionBar({
   mode,
   phase,
+  insuranceOffer,
   canHit,
   canStand,
   canDouble,
   canSplit,
   canSurrender,
+  onTakeInsurance,
+  onDeclineInsurance,
   onHit,
   onStand,
   onDouble,
@@ -64,6 +74,7 @@ export function ActionBar({
   onSurrender,
   onNextHand,
 }: ActionBarProps) {
+  const isAwaitingInsurance = phase === 'awaitingInsurance'
   const isAwaitingAction = phase === 'awaitingPlayerAction'
   const isHandResolved = phase === 'handResolved'
 
@@ -73,7 +84,24 @@ export function ActionBar({
       role="toolbar"
       aria-label="Player actions"
     >
-      {mode === 'playAndCount' && isAwaitingAction ? (
+      {mode === 'playAndCount' && isAwaitingInsurance ? (
+        <>
+          <ActionButton
+            label={insuranceOffer?.evenMoney ? 'Take Even' : 'Take Ins'}
+            shortcut="I"
+            onClick={onTakeInsurance}
+            variant={insuranceOffer?.recommendedTake ? 'primary' : 'default'}
+            size="large"
+          />
+          <ActionButton
+            label={insuranceOffer?.evenMoney ? 'Decline' : 'No Ins'}
+            shortcut="X"
+            onClick={onDeclineInsurance}
+            variant={insuranceOffer?.recommendedTake ? 'default' : 'primary'}
+            size="large"
+          />
+        </>
+      ) : mode === 'playAndCount' && isAwaitingAction ? (
         <>
           {/* Primary actions: Hit and Stand are larger */}
           <ActionButton label="Hit" shortcut="H" onClick={onHit} disabled={!canHit} size="large" />

@@ -27,6 +27,8 @@ A web-first blackjack training app focused on Hi-Lo card counting practice.
 - `D`: Double
 - `P`: Split
 - `R`: Surrender
+- `I`: Take insurance / even money (when offered)
+- `X`: Decline insurance / even money
 - `N`: Next hand / continue after prompt
 - `Space`: Pause/resume
 - `↑` / `↓`: Increase/decrease drill speed

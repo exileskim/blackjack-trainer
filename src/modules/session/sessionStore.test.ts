@@ -92,13 +92,39 @@ function setPlayState(overrides: Partial<ReturnType<typeof useSessionStore.getSt
     playerHands: [baseHand],
     dealerHand: { cards: [card('9'), card('7')], holeCardRevealed: false },
     activeHandIndex: 0,
+    dealerDrawQueue: [],
     promptScheduler: schedulerStub(),
     pendingPrompt: false,
     promptStartTime: null,
     phaseBeforePause: null,
     countChecks: [],
     handsPlayed: 0,
+    insuranceOffer: null,
     ...overrides,
+  })
+}
+
+function setReadyState(shoe: Shoe, mode: 'countingDrill' | 'playAndCount' = 'playAndCount') {
+  useSessionStore.setState({
+    sessionId: 'ready-session',
+    phase: 'ready',
+    mode,
+    ruleConfig: { ...DEFAULT_RULES },
+    shoe,
+    runningCount: 0,
+    handNumber: 0,
+    playerHands: [],
+    dealerHand: null,
+    activeHandIndex: 0,
+    dealerDrawQueue: [],
+    promptScheduler: schedulerStub(),
+    pendingPrompt: false,
+    promptStartTime: null,
+    phaseBeforePause: null,
+    countChecks: [],
+    handsPlayed: 0,
+    startedAt: '2026-02-25T00:00:00.000Z',
+    insuranceOffer: null,
   })
 }
 
@@ -137,6 +163,7 @@ describe('sessionStore regressions', () => {
       phaseBeforePause: null,
       countChecks: [],
       handsPlayed: 0,
+      insuranceOffer: null,
     })
 
     useSessionStore.getState().dealHand()
@@ -148,6 +175,87 @@ describe('sessionStore regressions', () => {
     expect(state.dealerHand?.cards.length).toBe(4)
     expect(state.runningCount).toBe(4)
     expect(state.phase).toBe('handResolved')
+  })
+
+  it('offers insurance decision when dealer shows Ace in play mode', () => {
+    const shoe = shoeFromCards([
+      card('9'),
+      card('A'),
+      card('7'),
+      card('5'),
+    ], 6)
+    setReadyState(shoe, 'playAndCount')
+
+    useSessionStore.getState().dealHand()
+    const state = useSessionStore.getState()
+
+    expect(state.phase).toBe('awaitingInsurance')
+    expect(state.dealerHand?.cards[0]?.rank).toBe('A')
+    expect(state.dealerHand?.holeCardRevealed).toBe(false)
+    expect(state.insuranceOffer).not.toBeNull()
+  })
+
+  it('declining insurance with no dealer blackjack continues to player action without revealing hole card', () => {
+    const shoe = shoeFromCards([
+      card('9'),
+      card('A'),
+      card('7'),
+      card('5'),
+    ], 6)
+    setReadyState(shoe, 'playAndCount')
+
+    useSessionStore.getState().dealHand()
+    const afterDeal = useSessionStore.getState()
+    expect(afterDeal.runningCount).toBe(-1)
+
+    useSessionStore.getState().declineInsurance()
+    const state = useSessionStore.getState()
+
+    expect(state.phase).toBe('awaitingPlayerAction')
+    expect(state.runningCount).toBe(-1)
+    expect(state.dealerHand?.holeCardRevealed).toBe(false)
+    expect(state.insuranceOffer).toBeNull()
+  })
+
+  it('taking insurance against dealer blackjack resolves the hand immediately', () => {
+    const shoe = shoeFromCards([
+      card('9'),
+      card('A'),
+      card('7'),
+      card('K'),
+    ], 6)
+    setReadyState(shoe, 'playAndCount')
+
+    useSessionStore.getState().dealHand()
+    useSessionStore.getState().takeInsurance()
+    const state = useSessionStore.getState()
+
+    expect(state.phase).toBe('handResolved')
+    expect(state.dealerHand?.holeCardRevealed).toBe(true)
+    expect(state.runningCount).toBe(-2)
+    expect(state.playerHands[0]?.outcome).toBe('push')
+    expect(state.handsPlayed).toBe(1)
+  })
+
+  it('even money resolves immediately as a win when player has blackjack', () => {
+    const shoe = shoeFromCards([
+      card('A'),
+      card('A'),
+      card('K'),
+      card('5'),
+    ], 6)
+    setReadyState(shoe, 'playAndCount')
+
+    useSessionStore.getState().dealHand()
+    const offer = useSessionStore.getState().insuranceOffer
+    expect(offer?.evenMoney).toBe(true)
+
+    useSessionStore.getState().takeInsurance()
+    const state = useSessionStore.getState()
+
+    expect(state.phase).toBe('handResolved')
+    expect(state.playerHands[0]?.outcome).toBe('win')
+    expect(state.dealerHand?.holeCardRevealed).toBe(true)
   })
 
   it('blocks double on split hand when DAS is disabled', () => {
@@ -227,6 +335,7 @@ describe('sessionStore regressions', () => {
       countChecks: [],
       handsPlayed: 0,
       startedAt: '2026-02-25T00:00:00.000Z',
+      insuranceOffer: null,
     })
 
     useSessionStore.getState().dealHand()
@@ -322,6 +431,7 @@ describe('sessionStore regressions', () => {
       phaseBeforePause: null,
       countChecks: [],
       handsPlayed: 3,
+      insuranceOffer: null,
       activePromptType: 'bestAction',
       promptExpectedAction: 'stand',
     })
