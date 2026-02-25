@@ -7,6 +7,7 @@ import { HistoryScreen } from '@/ui/screens/HistoryScreen.tsx'
 import { DeckCountdownScreen } from '@/ui/screens/DeckCountdownScreen.tsx'
 import { TrueCountDrillScreen } from '@/ui/screens/TrueCountDrillScreen.tsx'
 import { MissReplayScreen } from '@/ui/screens/MissReplayScreen.tsx'
+import { WongingDrillScreen } from '@/ui/screens/WongingDrillScreen.tsx'
 import {
   loadActiveSession,
   clearActiveSession,
@@ -21,7 +22,7 @@ import { completeOnboardingStep } from '@/modules/onboarding/onboarding.ts'
 import type { TrainingMode } from '@/modules/domain/enums.ts'
 import type { CountCheck, RuleConfig } from '@/modules/domain/types.ts'
 
-type OverlayView = 'history' | 'deckCountdown' | 'trueCountDrill' | 'missReplay' | null
+type OverlayView = 'history' | 'deckCountdown' | 'trueCountDrill' | 'missReplay' | 'wongingDrill' | null
 
 export function App() {
   const phase = useSessionStore((s) => s.phase)
@@ -119,6 +120,10 @@ export function App() {
     )
   }
 
+  if (overlay === 'wongingDrill') {
+    return <WongingDrillScreen onBack={goHome} />
+  }
+
   if (overlay === 'missReplay') {
     return <MissReplayScreen countChecks={missReplayChecks} onBack={goHome} />
   }
@@ -133,6 +138,7 @@ export function App() {
         onShowHistory={() => setOverlay('history')}
         onDeckCountdown={() => setOverlay('deckCountdown')}
         onTrueCountDrill={() => setOverlay('trueCountDrill')}
+        onWongingDrill={() => setOverlay('wongingDrill')}
       />
     )
   }

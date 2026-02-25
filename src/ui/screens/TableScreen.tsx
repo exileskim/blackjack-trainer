@@ -258,27 +258,27 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
 
         {/* BJ-029: Round timeline */}
         {store.handNumber > 0 && (
-          <div className="flex items-center justify-center gap-1 px-6 py-2 border-b border-white/[0.03]">
+          <div className="flex items-center justify-center gap-0.5 sm:gap-1 px-3 sm:px-6 py-1.5 sm:py-2 border-b border-white/[0.03]">
             {PHASE_LABELS.map(({ key, label }, i) => {
               const isActive = key === roundPhase
               const isPast = PHASE_LABELS.findIndex((p) => p.key === roundPhase) > i
               // Skip 'player' label in counting drill
               if (key === 'player' && store.mode === 'countingDrill') {
                 return (
-                  <div key={key} className="flex items-center gap-1">
-                    <span className="font-mono text-[8px] uppercase tracking-widest text-white/10 line-through">
+                  <div key={key} className="flex items-center gap-0.5 sm:gap-1">
+                    <span className="font-mono text-[7px] sm:text-[8px] uppercase tracking-widest text-white/10 line-through">
                       {label}
                     </span>
                     {i < PHASE_LABELS.length - 1 && (
-                      <span className="font-mono text-[8px] text-white/10 mx-0.5">›</span>
+                      <span className="font-mono text-[7px] sm:text-[8px] text-white/10 mx-0.5">›</span>
                     )}
                   </div>
                 )
               }
               return (
-                <div key={key} className="flex items-center gap-1">
+                <div key={key} className="flex items-center gap-0.5 sm:gap-1">
                   <span
-                    className={`font-mono text-[8px] uppercase tracking-widest transition-colors duration-300 ${
+                    className={`font-mono text-[7px] sm:text-[8px] uppercase tracking-widest transition-colors duration-300 ${
                       isActive
                         ? 'text-gold-400'
                         : isPast
@@ -289,7 +289,7 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
                     {label}
                   </span>
                   {i < PHASE_LABELS.length - 1 && (
-                    <span className={`font-mono text-[8px] mx-0.5 ${isPast ? 'text-white/15' : 'text-white/10'}`}>›</span>
+                    <span className={`font-mono text-[7px] sm:text-[8px] mx-0.5 ${isPast ? 'text-white/15' : 'text-white/10'}`}>›</span>
                   )}
                 </div>
               )
@@ -298,13 +298,13 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         )}
 
         {/* Table felt area */}
-        <div className="flex-1 felt-surface flex flex-col justify-between py-8 relative">
+        <div className="flex-1 felt-surface flex flex-col justify-between py-4 sm:py-8 relative">
           {/* Decorative table edge */}
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold-700/30 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gold-700/30 to-transparent" />
 
           {/* Dealer area */}
-          <div className="flex-1 flex flex-col items-center justify-center gap-2">
+          <div className="flex-1 flex flex-col items-center justify-center gap-1.5 sm:gap-2">
             {store.dealerHand && (
               <HandRail
                 cards={store.dealerHand.cards}
@@ -317,28 +317,28 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
 
             {/* BJ-032: Dealer explainer hint */}
             {explainer && store.mode === 'countingDrill' && (
-              <p className="font-mono text-[10px] text-white/25 mt-1 italic">
+              <p className="font-mono text-[9px] sm:text-[10px] text-white/25 mt-1 italic">
                 {explainer}
               </p>
             )}
           </div>
 
           {/* Center divider with shoe info */}
-          <div className="flex items-center justify-center gap-4 py-2">
-            <div className="h-px flex-1 max-w-32 bg-gradient-to-r from-transparent to-white/10" />
+          <div className="flex items-center justify-center gap-3 sm:gap-4 py-1.5 sm:py-2">
+            <div className="h-px flex-1 max-w-20 sm:max-w-32 bg-gradient-to-r from-transparent to-white/10" />
             <div className="flex items-center gap-3">
               {store.shoe && (
-                <span className="font-mono text-[10px] uppercase tracking-widest text-white/20">
+                <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-white/20">
                   {store.shoe.cardsRemaining()} cards
                 </span>
               )}
             </div>
-            <div className="h-px flex-1 max-w-32 bg-gradient-to-l from-transparent to-white/10" />
+            <div className="h-px flex-1 max-w-20 sm:max-w-32 bg-gradient-to-l from-transparent to-white/10" />
           </div>
 
           {/* Player area */}
           <div className="flex-1 flex items-center justify-center">
-            <div className="flex gap-6">
+            <div className="flex gap-3 sm:gap-6">
               {store.playerHands.map((hand, i) => (
                 <HandRail
                   key={i}
@@ -359,7 +359,7 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         {/* BJ-034: Strategy coach feedback */}
         {store.mode === 'playAndCount' && store.strategyCoachEnabled && store.lastActionFeedback && (
           <div
-            className={`flex items-center justify-center gap-2 px-6 py-1.5 font-mono text-[11px] transition-colors ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-1.5 font-mono text-[10px] sm:text-[11px] transition-colors ${
               store.lastActionFeedback.isCorrect
                 ? 'text-emerald-400/70'
                 : 'text-red-400/80'
@@ -367,9 +367,10 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
             role="status"
             aria-live="polite"
           >
-            <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+            <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${
               store.lastActionFeedback.isCorrect ? 'bg-emerald-400/60' : 'bg-red-400/60'
             }`} />
+            <span className="truncate">
             {store.lastActionFeedback.isCorrect
               ? store.lastActionFeedback.deviationName
                 ? `Correct deviation: ${store.lastActionFeedback.deviationName}`
@@ -380,6 +381,7 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
                     : ''
                 }`
             }
+            </span>
           </div>
         )}
 
@@ -401,11 +403,11 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         />
 
         {/* End session / coach toggle */}
-        <div className="flex items-center justify-center gap-6 pb-3">
+        <div className="flex items-center justify-center gap-4 sm:gap-6 pb-2 sm:pb-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           {store.mode === 'playAndCount' && (
             <button
               onClick={store.toggleStrategyCoach}
-              className={`font-mono text-[10px] uppercase tracking-wider transition-colors ${
+              className={`font-mono text-[10px] uppercase tracking-wider transition-colors min-h-[36px] px-2 ${
                 store.strategyCoachEnabled ? 'text-gold-400/50 hover:text-gold-400/80' : 'text-white/15 hover:text-white/30'
               }`}
             >
@@ -420,7 +422,7 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
               store.endSession()
               onEndSession()
             }}
-            className="font-body text-xs text-white/20 hover:text-white/50 transition-colors uppercase tracking-wider"
+            className="font-body text-xs text-white/20 hover:text-white/50 transition-colors uppercase tracking-wider min-h-[36px] px-2"
           >
             End Session
           </button>

@@ -34,7 +34,6 @@ export function SummaryScreen({
       ? countChecks.reduce((sum, c) => sum + c.responseMs, 0) / totalPrompts
       : 0
 
-  // Longest correct streak
   let longestStreak = 0
   let currentStreak = 0
   for (const check of countChecks) {
@@ -46,7 +45,6 @@ export function SummaryScreen({
     }
   }
 
-  // Duration computed once on mount (avoids impure Date.now in render)
   const [durationMinutes] = useState(() =>
     startedAt
       ? Math.round((Date.now() - new Date(startedAt).getTime()) / 60000)
@@ -57,12 +55,11 @@ export function SummaryScreen({
 
   return (
     <div className="h-full flex flex-col relative overflow-hidden">
-      <div className="absolute inset-0 bg-void" />
-      <div className="absolute inset-0 bg-gradient-to-b from-felt-900/30 via-transparent to-felt-900/20" />
+      <div className="screen-bg" />
 
-      <div className="relative z-10 flex-1 overflow-y-auto flex flex-col items-center gap-10 max-w-lg w-full mx-auto px-6 py-10">
+      <div className="relative z-10 flex-1 overflow-y-auto flex flex-col items-center gap-8 sm:gap-10 max-w-lg w-full mx-auto px-4 sm:px-6 py-8 sm:py-10">
         {/* Header */}
-        <div className="text-center">
+        <div className="text-center anim-fade-up anim-delay-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-gold-400/60 mb-2">
             Session Complete
           </p>
@@ -76,25 +73,27 @@ export function SummaryScreen({
         </div>
 
         {/* Stats grid */}
-        <div className="w-full grid grid-cols-2 gap-4" role="list" aria-label="Session statistics">
-          <StatCard label="Hands Played" value={handsPlayed.toString()} />
-          <StatCard label="Prompts" value={totalPrompts.toString()} />
+        <div className="w-full grid grid-cols-2 gap-3 sm:gap-4 anim-fade-up anim-delay-2" role="list" aria-label="Session statistics">
+          <StatCard label="Hands Played" value={handsPlayed.toString()} delay={0} />
+          <StatCard label="Prompts" value={totalPrompts.toString()} delay={1} />
           <StatCard
             label="Accuracy"
             value={`${accuracy.toFixed(0)}%`}
             accent={accuracy >= 80 ? 'green' : accuracy >= 50 ? 'gold' : 'red'}
+            delay={2}
           />
           <StatCard
             label="Avg Response"
             value={`${(avgResponseMs / 1000).toFixed(1)}s`}
+            delay={3}
           />
-          <StatCard label="Correct" value={`${correctPrompts}/${totalPrompts}`} />
-          <StatCard label="Best Streak" value={longestStreak.toString()} accent="gold" />
+          <StatCard label="Correct" value={`${correctPrompts}/${totalPrompts}`} delay={4} />
+          <StatCard label="Best Streak" value={longestStreak.toString()} accent="gold" delay={5} />
         </div>
 
         {/* Error log */}
         {countChecks.some((c) => !c.isCorrect) && (
-          <div className="w-full">
+          <div className="w-full anim-fade-up anim-delay-4">
             <h3 className="font-body text-xs uppercase tracking-wider text-white/30 mb-3">
               Misses
             </h3>
@@ -105,30 +104,30 @@ export function SummaryScreen({
                   <div
                     key={i}
                     role="listitem"
-                    className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
+                    className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-[11px] sm:text-xs"
                   >
-                    <span className="font-mono text-xs text-white/30">
-                      Hand #{c.handNumber}
+                    <span className="font-mono text-white/30">
+                      #{c.handNumber}
                     </span>
                     {(c.promptType ?? 'runningCount') !== 'bestAction' ? (
-                      <div className="flex items-center gap-4">
-                        <span className="font-mono text-xs text-white/50">
-                          Entered: {c.enteredCount}
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <span className="font-mono text-white/50">
+                          {c.enteredCount}
                         </span>
-                        <span className="font-mono text-xs text-gold-400">
-                          Actual: {c.expectedCount}
+                        <span className="font-mono text-gold-400">
+                          → {c.expectedCount}
                         </span>
-                        <span className="font-mono text-xs text-red-400">
+                        <span className="font-mono text-red-400 w-6 sm:w-8 text-right">
                           {c.delta > 0 ? '+' : ''}{c.delta}
                         </span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-4">
-                        <span className="font-mono text-xs text-white/50">
-                          Played: {formatAction(c.enteredAction)}
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <span className="font-mono text-white/50">
+                          {formatAction(c.enteredAction)}
                         </span>
-                        <span className="font-mono text-xs text-gold-400">
-                          Best: {formatAction(c.expectedAction)}
+                        <span className="font-mono text-gold-400">
+                          → {formatAction(c.expectedAction)}
                         </span>
                       </div>
                     )}
@@ -143,7 +142,7 @@ export function SummaryScreen({
           const report = analyzeWeakSpots(countOnlyChecks)
           if (report.insights.length === 0) return null
           return (
-            <div className="w-full">
+            <div className="w-full anim-fade-up anim-delay-5">
               <h3 className="font-body text-xs uppercase tracking-wider text-white/30 mb-3">
                 Insights
               </h3>
@@ -177,24 +176,24 @@ export function SummaryScreen({
         })()}
 
         {/* Actions */}
-        <div className="w-full flex flex-col gap-3">
+        <div className="w-full flex flex-col gap-3 anim-fade-up anim-delay-6">
           <button
             onClick={onNewSession}
-            className="w-full rounded-xl border border-gold-400/40 bg-gold-400/10 px-6 py-4 font-display text-xl text-gold-400 hover:bg-gold-400/20 transition-all"
+            className="w-full rounded-xl border border-gold-400/40 bg-gold-400/10 px-6 py-4 font-display text-xl text-gold-400 hover:bg-gold-400/20 hover:shadow-[0_0_30px_rgba(212,175,55,0.15)] transition-all min-h-[52px]"
           >
             New Session
           </button>
           {onMissReplay && replayableMisses.length > 0 && (
             <button
               onClick={onMissReplay}
-              className="w-full rounded-xl border border-red-400/20 bg-red-400/[0.04] px-6 py-3 font-body text-sm text-red-400/70 hover:text-red-400 hover:bg-red-400/[0.08] transition-all"
+              className="w-full rounded-xl border border-red-400/20 bg-red-400/[0.04] px-6 py-3 font-body text-sm text-red-400/70 hover:text-red-400 hover:bg-red-400/[0.08] transition-all min-h-[44px]"
             >
               Replay Count Misses ({replayableMisses.length})
             </button>
           )}
           <button
             onClick={onShowHistory}
-            className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-6 py-3 font-body text-sm text-white/40 hover:text-white/60 hover:bg-white/[0.04] transition-all"
+            className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-6 py-3 font-body text-sm text-white/40 hover:text-white/60 hover:bg-white/[0.04] transition-all min-h-[44px]"
           >
             View Session History
           </button>
@@ -208,10 +207,12 @@ function StatCard({
   label,
   value,
   accent,
+  delay,
 }: {
   label: string
   value: string
   accent?: 'green' | 'gold' | 'red'
+  delay?: number
 }) {
   const valueColor =
     accent === 'green'
@@ -223,11 +224,15 @@ function StatCard({
           : 'text-card-white'
 
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4" role="listitem">
+    <div
+      className="stat-card rounded-xl border border-white/5 bg-white/[0.02] p-3 sm:p-4"
+      role="listitem"
+      style={delay !== undefined ? { animationDelay: `${0.12 + delay * 0.06}s` } : undefined}
+    >
       <p className="font-body text-[10px] uppercase tracking-wider text-white/30 mb-1">
         {label}
       </p>
-      <p className={`font-mono text-2xl font-bold ${valueColor}`}>{value}</p>
+      <p className={`font-mono text-xl sm:text-2xl font-bold ${valueColor}`}>{value}</p>
     </div>
   )
 }

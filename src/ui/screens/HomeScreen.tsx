@@ -24,9 +24,19 @@ interface HomeScreenProps {
   onShowHistory?: () => void
   onDeckCountdown?: () => void
   onTrueCountDrill?: () => void
+  onWongingDrill?: () => void
 }
 
-export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscardRecovery, onShowHistory, onDeckCountdown, onTrueCountDrill }: HomeScreenProps) {
+export function HomeScreen({
+  onStartSession,
+  recoveryPrompt,
+  onRecover,
+  onDiscardRecovery,
+  onShowHistory,
+  onDeckCountdown,
+  onTrueCountDrill,
+  onWongingDrill,
+}: HomeScreenProps) {
   const savedSettings = loadSettings()
   const [mode, setMode] = useState<TrainingMode>(savedSettings?.mode ?? 'playAndCount')
   const [showSettings, setShowSettings] = useState(false)
@@ -55,34 +65,31 @@ export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscar
   }
 
   return (
-    <div className="h-full flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Background atmosphere */}
-      <div className="absolute inset-0 bg-void" />
-      <div className="absolute inset-0 bg-gradient-to-b from-felt-900/40 via-transparent to-felt-900/20" />
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-        }}
-      />
+    <div className="h-full flex flex-col items-center relative overflow-y-auto overflow-x-hidden">
+      {/* Background */}
+      <div className="screen-bg" />
 
-      <div className="relative z-10 flex flex-col items-center gap-12 max-w-md w-full px-6">
-        {/* Title */}
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-gold-400/40" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-gold-400/60">
+      <div className="relative z-10 flex flex-col items-center gap-10 max-w-md w-full px-6 py-12">
+        {/* ─── Title ─── */}
+        <div className="text-center anim-fade-up anim-delay-1">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="h-px w-16 bg-gradient-to-r from-transparent to-gold-400/30" />
+            <span className="font-mono text-[9px] uppercase tracking-[0.35em] text-gold-400/50">
               Training System
             </span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-gold-400/40" />
+            <div className="h-px w-16 bg-gradient-to-l from-transparent to-gold-400/30" />
           </div>
-          <h1 className="font-display text-5xl text-card-white mb-2">Blackjack</h1>
-          <p className="font-display text-2xl italic text-gold-400/80">Count Trainer</p>
+          <h1 className="font-display text-5xl text-card-white mb-3 tracking-tight">
+            Blackjack
+          </h1>
+          <p className="font-display text-2xl italic text-shimmer">
+            Count Trainer
+          </p>
         </div>
 
-        {/* Onboarding path — shown until all steps complete */}
+        {/* ─── Onboarding ─── */}
         {!onboarding.isComplete && (
-          <div className="w-full">
+          <div className="w-full anim-fade-up anim-delay-2">
             <p className="font-body text-[10px] uppercase tracking-wider text-white/20 mb-3 text-center">
               Learning Path
             </p>
@@ -96,7 +103,7 @@ export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscar
                   return (
                     <div key={step} className="flex-1 flex items-center gap-1">
                       <div
-                        className={`h-1.5 flex-1 rounded-full transition-all ${
+                        className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
                           done
                             ? 'bg-emerald-400/60'
                             : isCurrent
@@ -120,7 +127,7 @@ export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscar
                 else if (step === 'trueCount') onTrueCountDrill?.()
                 else onStartSession('playAndCount', rules)
               }}
-              className="w-full rounded-xl border border-gold-400/20 bg-gold-400/[0.04] p-4 text-left hover:bg-gold-400/[0.08] transition-all group"
+              className="w-full rounded-xl border border-gold-400/20 bg-gold-400/[0.04] p-4 text-left hover:bg-gold-400/[0.08] hover:border-gold-400/30 transition-all group"
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-gold-400/60">
@@ -138,7 +145,6 @@ export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscar
               </p>
             </button>
 
-            {/* Completed steps */}
             {onboarding.completedSteps.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {onboarding.completedSteps.map((step) => (
@@ -154,162 +160,101 @@ export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscar
           </div>
         )}
 
-        {/* Mode selector */}
-        <div className="w-full space-y-3">
-          <button
+        {/* ─── Mode selector ─── */}
+        <div className="w-full space-y-3 anim-fade-up anim-delay-3">
+          <ModeCard
+            title="Play + Count"
+            description="You control every hand: Hit, Stand, Double, Split, Surrender"
+            isActive={mode === 'playAndCount'}
             onClick={() => setMode('playAndCount')}
-            className={`w-full text-left rounded-xl border p-4 transition-all ${
-              mode === 'playAndCount'
-                ? 'border-gold-400/40 bg-gold-400/10'
-                : 'border-white/10 bg-white/[0.02] hover:border-white/20'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-body text-sm font-semibold text-card-white">Play + Count</h3>
-                <p className="font-body text-xs text-white/40 mt-0.5">
-                  You control every hand: Hit, Hold, Double, Split, Surrender
-                </p>
-              </div>
-              {mode === 'playAndCount' && (
-                <div className="w-2 h-2 rounded-full bg-gold-400" />
-              )}
-            </div>
-          </button>
-
-          <button
+          />
+          <ModeCard
+            title="Counting Drill"
+            description="Auto-deal pace training focused on running count speed"
+            isActive={mode === 'countingDrill'}
             onClick={() => setMode('countingDrill')}
-            className={`w-full text-left rounded-xl border p-4 transition-all ${
-              mode === 'countingDrill'
-                ? 'border-gold-400/40 bg-gold-400/10'
-                : 'border-white/10 bg-white/[0.02] hover:border-white/20'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-body text-sm font-semibold text-card-white">Counting Drill</h3>
-                <p className="font-body text-xs text-white/40 mt-0.5">
-                  Auto-deal pace training focused on running count speed
-                </p>
-              </div>
-              {mode === 'countingDrill' && (
-                <div className="w-2 h-2 rounded-full bg-gold-400" />
-              )}
-            </div>
-          </button>
+          />
         </div>
 
-        {/* Settings toggle */}
-        <div className="w-full">
+        {/* ─── Settings toggle ─── */}
+        <div className="w-full anim-fade-up anim-delay-4">
           <button
             onClick={() => setShowSettings(!showSettings)}
             className="flex items-center gap-2 font-body text-xs uppercase tracking-wider text-white/30 hover:text-white/50 transition-colors"
           >
-            <span>{showSettings ? '▾' : '▸'}</span>
+            <span
+              className="inline-block transition-transform duration-200"
+              style={{ transform: showSettings ? 'rotate(90deg)' : 'rotate(0deg)' }}
+            >
+              ▸
+            </span>
             Table Rules
           </button>
 
           {showSettings && (
-            <div className="mt-4 space-y-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div className="mt-4 space-y-4 rounded-xl border border-white/10 bg-white/[0.02] p-5">
               {/* Decks */}
-              <div className="flex items-center justify-between">
-                <label className="font-body text-xs text-white/40">Decks</label>
+              <SettingRow label="Decks">
                 <div className="flex gap-1">
                   {DECK_COUNTS.map((d) => (
-                    <button
+                    <SettingPill
                       key={d}
+                      label={String(d)}
+                      isActive={rules.decks === d}
                       onClick={() => setRules({ ...rules, decks: d })}
-                      className={`font-mono text-xs px-2.5 py-1 rounded transition-all ${
-                        rules.decks === d
-                          ? 'bg-gold-400/15 text-gold-400 border border-gold-400/30'
-                          : 'text-white/40 border border-white/10 hover:text-white/60'
-                      }`}
-                    >
-                      {d}
-                    </button>
+                    />
                   ))}
                 </div>
-              </div>
+              </SettingRow>
 
               {/* Dealer hits soft 17 */}
-              <div className="flex items-center justify-between">
-                <label className="font-body text-xs text-white/40">Dealer Soft 17</label>
+              <SettingRow label="Dealer Soft 17">
                 <div className="flex gap-1">
                   {(['Hit', 'Stand'] as const).map((opt) => (
-                    <button
+                    <SettingPill
                       key={opt}
-                      onClick={() =>
-                        setRules({ ...rules, dealerHitsSoft17: opt === 'Hit' })
-                      }
-                      className={`font-mono text-xs px-2.5 py-1 rounded transition-all ${
-                        (opt === 'Hit') === rules.dealerHitsSoft17
-                          ? 'bg-gold-400/15 text-gold-400 border border-gold-400/30'
-                          : 'text-white/40 border border-white/10 hover:text-white/60'
-                      }`}
-                    >
-                      {opt}
-                    </button>
+                      label={opt}
+                      isActive={(opt === 'Hit') === rules.dealerHitsSoft17}
+                      onClick={() => setRules({ ...rules, dealerHitsSoft17: opt === 'Hit' })}
+                    />
                   ))}
                 </div>
-              </div>
+              </SettingRow>
 
               {/* DAS */}
-              <div className="flex items-center justify-between">
-                <label className="font-body text-xs text-white/40">Double After Split</label>
-                <button
-                  onClick={() =>
-                    setRules({ ...rules, doubleAfterSplit: !rules.doubleAfterSplit })
-                  }
-                  className={`font-mono text-xs px-2.5 py-1 rounded transition-all ${
-                    rules.doubleAfterSplit
-                      ? 'bg-gold-400/15 text-gold-400 border border-gold-400/30'
-                      : 'text-white/40 border border-white/10'
-                  }`}
-                >
-                  {rules.doubleAfterSplit ? 'On' : 'Off'}
-                </button>
-              </div>
+              <SettingRow label="Double After Split">
+                <SettingPill
+                  label={rules.doubleAfterSplit ? 'On' : 'Off'}
+                  isActive={rules.doubleAfterSplit}
+                  onClick={() => setRules({ ...rules, doubleAfterSplit: !rules.doubleAfterSplit })}
+                />
+              </SettingRow>
 
               {/* Surrender */}
-              <div className="flex items-center justify-between">
-                <label className="font-body text-xs text-white/40">Surrender</label>
-                <button
-                  onClick={() =>
-                    setRules({ ...rules, surrenderAllowed: !rules.surrenderAllowed })
-                  }
-                  className={`font-mono text-xs px-2.5 py-1 rounded transition-all ${
-                    rules.surrenderAllowed
-                      ? 'bg-gold-400/15 text-gold-400 border border-gold-400/30'
-                      : 'text-white/40 border border-white/10'
-                  }`}
-                >
-                  {rules.surrenderAllowed ? 'On' : 'Off'}
-                </button>
-              </div>
+              <SettingRow label="Surrender">
+                <SettingPill
+                  label={rules.surrenderAllowed ? 'On' : 'Off'}
+                  isActive={rules.surrenderAllowed}
+                  onClick={() => setRules({ ...rules, surrenderAllowed: !rules.surrenderAllowed })}
+                />
+              </SettingRow>
 
               {/* Speed */}
-              <div className="flex items-center justify-between">
-                <label className="font-body text-xs text-white/40">Deal Speed</label>
+              <SettingRow label="Deal Speed">
                 <div className="flex gap-1">
                   {(['slow', 'normal', 'fast', 'veryFast'] as const).map((s) => (
-                    <button
+                    <SettingPill
                       key={s}
+                      label={s === 'veryFast' ? 'V.Fast' : s.charAt(0).toUpperCase() + s.slice(1)}
+                      isActive={rules.dealSpeed === s}
                       onClick={() => setRules({ ...rules, dealSpeed: s })}
-                      className={`font-mono text-xs px-2 py-1 rounded transition-all ${
-                        rules.dealSpeed === s
-                          ? 'bg-gold-400/15 text-gold-400 border border-gold-400/30'
-                          : 'text-white/40 border border-white/10 hover:text-white/60'
-                      }`}
-                    >
-                      {s === 'veryFast' ? 'V.Fast' : s.charAt(0).toUpperCase() + s.slice(1)}
-                    </button>
+                    />
                   ))}
                 </div>
-              </div>
+              </SettingRow>
 
               {/* Penetration */}
-              <div className="flex items-center justify-between">
-                <label className="font-body text-xs text-white/40">Penetration</label>
+              <SettingRow label="Penetration">
                 <div className="flex items-center gap-2">
                   <input
                     type="range"
@@ -325,35 +270,27 @@ export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscar
                     {(rules.penetration * 100).toFixed(0)}%
                   </span>
                 </div>
-              </div>
+              </SettingRow>
 
               {/* Prompt types */}
               <div className="space-y-2">
                 <label className="font-body text-xs text-white/40">Prompt Checks</label>
                 <div className="flex flex-wrap gap-1">
-                  {PROMPT_TYPES.map((type) => {
-                    const enabled = enabledPromptTypes.includes(type)
-                    return (
-                      <button
-                        key={type}
-                        onClick={() => togglePromptType(type)}
-                        className={`font-mono text-xs px-2.5 py-1 rounded transition-all ${
-                          enabled
-                            ? 'bg-gold-400/15 text-gold-400 border border-gold-400/30'
-                            : 'text-white/40 border border-white/10 hover:text-white/60'
-                        }`}
-                      >
-                        {promptTypeLabel[type]}
-                      </button>
-                    )
-                  })}
+                  {PROMPT_TYPES.map((type) => (
+                    <SettingPill
+                      key={type}
+                      label={promptTypeLabel[type]}
+                      isActive={enabledPromptTypes.includes(type)}
+                      onClick={() => togglePromptType(type)}
+                    />
+                  ))}
                 </div>
-                <p className="font-body text-[10px] text-white/25">
+                <p className="font-body text-[10px] text-white/20">
                   Best Play prompts appear in Play + Count only.
                 </p>
               </div>
 
-              <div className="h-px bg-white/5" />
+              <div className="divider-gold" />
 
               {/* Accessibility */}
               <div className="space-y-3">
@@ -361,57 +298,42 @@ export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscar
                   Accessibility
                 </p>
 
-                <div className="flex items-center justify-between">
-                  <label className="font-body text-xs text-white/40">High Contrast</label>
-                  <button
+                <SettingRow label="High Contrast">
+                  <SettingPill
+                    label={accessibility.highContrast ? 'On' : 'Off'}
+                    isActive={accessibility.highContrast}
                     onClick={() =>
-                      setAccessibility((prev) => ({
-                        ...prev,
-                        highContrast: !prev.highContrast,
-                      }))
+                      setAccessibility((prev) => ({ ...prev, highContrast: !prev.highContrast }))
                     }
-                    className={`font-mono text-xs px-2.5 py-1 rounded transition-all ${
-                      accessibility.highContrast
-                        ? 'bg-gold-400/15 text-gold-400 border border-gold-400/30'
-                        : 'text-white/40 border border-white/10'
-                    }`}
-                  >
-                    {accessibility.highContrast ? 'On' : 'Off'}
-                  </button>
-                </div>
+                  />
+                </SettingRow>
 
-                <div className="flex items-center justify-between">
-                  <label className="font-body text-xs text-white/40">Text Size</label>
+                <SettingRow label="Text Size">
                   <div className="flex gap-1">
                     {([
                       ['normal', 'Normal'],
                       ['large', 'Large'],
                       ['xLarge', 'XL'],
                     ] as const).map(([value, label]) => (
-                      <button
+                      <SettingPill
                         key={value}
+                        label={label}
+                        isActive={accessibility.textScale === value}
                         onClick={() =>
                           setAccessibility((prev) => ({ ...prev, textScale: value }))
                         }
-                        className={`font-mono text-xs px-2.5 py-1 rounded transition-all ${
-                          accessibility.textScale === value
-                            ? 'bg-gold-400/15 text-gold-400 border border-gold-400/30'
-                            : 'text-white/40 border border-white/10 hover:text-white/60'
-                        }`}
-                      >
-                        {label}
-                      </button>
+                      />
                     ))}
                   </div>
-                </div>
+                </SettingRow>
               </div>
             </div>
           )}
         </div>
 
-        {/* Recovery banner */}
+        {/* ─── Recovery banner ─── */}
         {recoveryPrompt && (
-          <div className="w-full rounded-xl border border-gold-400/30 bg-gold-400/5 p-4">
+          <div className="w-full rounded-xl border border-gold-400/30 bg-gold-400/5 p-4 anim-fade-up">
             <p className="font-body text-sm text-card-white mb-1">Resume interrupted session?</p>
             <p className="font-mono text-xs text-white/40 mb-3">
               {recoveryPrompt.handsPlayed} hands played · {recoveryPrompt.countChecks.length} count checks
@@ -433,60 +355,71 @@ export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscar
           </div>
         )}
 
-        {/* Start button */}
+        {/* ─── Start button ─── */}
         <button
-          onClick={() => {
-            onStartSession(mode, rules)
-          }}
-          className="w-full rounded-xl border border-gold-400/40 bg-gold-400/10 px-6 py-4 font-display text-xl text-gold-400 hover:bg-gold-400/20 transition-all group"
+          onClick={() => onStartSession(mode, rules)}
+          className="w-full rounded-xl border border-gold-400/40 bg-gold-400/10 px-6 py-4 font-display text-xl text-gold-400 hover:bg-gold-400/20 hover:border-gold-400/50 hover:shadow-[0_0_30px_rgba(212,175,55,0.15)] transition-all group anim-fade-up anim-delay-5"
         >
           Begin Training
-          <span className="ml-3 font-mono text-xs text-gold-400/50 group-hover:text-gold-400/80 transition-colors">
+          <span className="ml-3 font-mono text-xs text-gold-400/40 group-hover:text-gold-400/70 transition-colors">
             ↵
           </span>
         </button>
 
-        {/* Practice drills */}
-        {(onDeckCountdown || onTrueCountDrill) && (
-          <div className="w-full">
-            <p className="font-body text-[10px] uppercase tracking-wider text-white/20 mb-2 text-center">
+        {/* ─── Practice Drills ─── */}
+        <div className="w-full anim-fade-up anim-delay-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-px flex-1 bg-white/5" />
+            <p className="font-body text-[10px] uppercase tracking-wider text-white/20">
               Practice Drills
             </p>
-            <div className="flex gap-3">
-              {onDeckCountdown && (
-                <button
-                  onClick={onDeckCountdown}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-left hover:border-white/20 transition-all"
-                >
-                  <h4 className="font-body text-xs font-semibold text-card-white">Deck Countdown</h4>
-                  <p className="font-body text-[10px] text-white/30 mt-0.5">Count a full deck against the clock</p>
-                </button>
-              )}
-              {onTrueCountDrill && (
-                <button
-                  onClick={onTrueCountDrill}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-left hover:border-white/20 transition-all"
-                >
-                  <h4 className="font-body text-xs font-semibold text-card-white">True Count</h4>
-                  <p className="font-body text-[10px] text-white/30 mt-0.5">Practice RC ÷ decks conversion</p>
-                </button>
-              )}
-            </div>
+            <div className="h-px flex-1 bg-white/5" />
           </div>
-        )}
 
-        {/* History link */}
+          <div className="grid grid-cols-2 gap-2.5">
+            {onDeckCountdown && (
+              <DrillCard
+                title="Deck Countdown"
+                description="Count a full deck against the clock"
+                onClick={onDeckCountdown}
+              />
+            )}
+            {onTrueCountDrill && (
+              <DrillCard
+                title="True Count"
+                description="Practice RC ÷ decks conversion"
+                onClick={onTrueCountDrill}
+              />
+            )}
+            {onWongingDrill && (
+              <DrillCard
+                title="Wonging"
+                description="Back-counting entry & exit decisions"
+                onClick={onWongingDrill}
+                accent
+              />
+            )}
+            <DrillCard
+              title="Miss Replay"
+              description="Review errors from past sessions"
+              onClick={onShowHistory}
+              subtle
+            />
+          </div>
+        </div>
+
+        {/* ─── History link ─── */}
         {onShowHistory && (
           <button
             onClick={onShowHistory}
-            className="font-body text-xs uppercase tracking-wider text-white/20 hover:text-gold-400/60 transition-colors"
+            className="font-body text-xs uppercase tracking-wider text-white/20 hover:text-gold-400/60 transition-colors anim-fade-up anim-delay-7"
           >
             Session History
           </button>
         )}
 
-        {/* Keyboard hints */}
-        <div className="flex items-center gap-6 text-white/15">
+        {/* ─── Keyboard hints ─── */}
+        <div className="flex items-center gap-6 text-white/15 pb-4 anim-fade-up anim-delay-8">
           <div className="flex items-center gap-1.5">
             <span className="kbd">Space</span>
             <span className="text-[10px]">Pause</span>
@@ -502,5 +435,112 @@ export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscar
         </div>
       </div>
     </div>
+  )
+}
+
+/* ─── Sub-components ─── */
+
+function ModeCard({
+  title,
+  description,
+  isActive,
+  onClick,
+}: {
+  title: string
+  description: string
+  isActive: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left rounded-xl border p-4 transition-all duration-200 ${
+        isActive
+          ? 'border-gold-400/40 bg-gold-400/10 shadow-[0_0_20px_rgba(212,175,55,0.08)]'
+          : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-body text-sm font-semibold text-card-white">{title}</h3>
+          <p className="font-body text-xs text-white/40 mt-0.5">{description}</p>
+        </div>
+        <div
+          className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+            isActive
+              ? 'bg-gold-400 shadow-[0_0_8px_rgba(212,175,55,0.6)]'
+              : 'bg-white/10'
+          }`}
+        />
+      </div>
+    </button>
+  )
+}
+
+function DrillCard({
+  title,
+  description,
+  onClick,
+  accent,
+  subtle,
+}: {
+  title: string
+  description: string
+  onClick?: () => void
+  accent?: boolean
+  subtle?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-xl border p-3 text-left transition-all group ${
+        accent
+          ? 'border-gold-400/15 bg-gold-400/[0.03] hover:border-gold-400/25 hover:bg-gold-400/[0.06]'
+          : subtle
+            ? 'border-white/5 bg-white/[0.01] hover:border-white/10 hover:bg-white/[0.03]'
+            : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+      }`}
+    >
+      <h4 className={`font-body text-xs font-semibold mb-0.5 ${
+        accent ? 'text-gold-400/80 group-hover:text-gold-400' : 'text-card-white'
+      }`}>
+        {title}
+      </h4>
+      <p className="font-body text-[10px] text-white/30 leading-relaxed">
+        {description}
+      </p>
+    </button>
+  )
+}
+
+function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between">
+      <label className="font-body text-xs text-white/40">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function SettingPill({
+  label,
+  isActive,
+  onClick,
+}: {
+  label: string
+  isActive: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`font-mono text-xs px-2.5 py-1 rounded transition-all duration-200 ${
+        isActive
+          ? 'bg-gold-400/15 text-gold-400 border border-gold-400/30'
+          : 'text-white/40 border border-white/10 hover:text-white/60 hover:border-white/20'
+      }`}
+    >
+      {label}
+    </button>
   )
 }

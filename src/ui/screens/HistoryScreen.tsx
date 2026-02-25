@@ -13,21 +13,13 @@ export function HistoryScreen({ onBack }: HistoryScreenProps) {
 
   return (
     <div className="h-full flex flex-col relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-void" />
-      <div className="absolute inset-0 bg-gradient-to-b from-felt-900/40 via-transparent to-felt-900/20" />
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-        }}
-      />
+      <div className="screen-bg" />
 
       {/* Header */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/5">
+      <div className="relative z-10 flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-white/5">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-white/40 hover:text-gold-400 transition-colors"
+          className="flex items-center gap-1.5 sm:gap-2 font-mono text-xs uppercase tracking-wider text-white/40 hover:text-gold-400 transition-colors min-h-[44px]"
           aria-label="Back to home"
         >
           <span aria-hidden="true">←</span> Back
@@ -37,17 +29,17 @@ export function HistoryScreen({ onBack }: HistoryScreenProps) {
             Session Ledger
           </p>
         </div>
-        <div className="w-16" /> {/* Balance spacer */}
+        <div className="w-12 sm:w-16" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-6 py-6">
+      <div className="relative z-10 flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
         {sessions.length === 0 ? (
           <EmptyState />
         ) : (
           <div className="max-w-2xl mx-auto space-y-2">
-            {/* Column headers */}
-            <div className="grid grid-cols-[1fr_4rem_4rem_4rem_4rem] gap-3 px-4 pb-2 border-b border-white/5">
+            {/* Column headers — hidden on mobile where we use a card layout */}
+            <div className="hidden sm:grid grid-cols-[1fr_4rem_4rem_4rem_4rem] gap-3 px-4 pb-2 border-b border-white/5">
               <span className="font-body text-[10px] uppercase tracking-wider text-white/20">
                 Session
               </span>
@@ -144,15 +136,15 @@ function SessionRow({
       className="rounded-xl border border-white/5 bg-white/[0.01] overflow-hidden transition-all"
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      {/* Main row */}
+      {/* Main row — card on mobile, grid on sm+ */}
       <button
         onClick={onToggle}
-        className="w-full grid grid-cols-[1fr_4rem_4rem_4rem_4rem] gap-3 items-center px-4 py-3 hover:bg-white/[0.02] transition-colors text-left"
+        className="w-full sm:grid sm:grid-cols-[1fr_4rem_4rem_4rem_4rem] sm:gap-3 items-center px-3 sm:px-4 py-3 hover:bg-white/[0.02] transition-colors text-left min-h-[44px]"
         aria-expanded={isExpanded}
         aria-label={`Session from ${dateStr} at ${timeStr}`}
       >
         {/* Date & mode */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {hasMisses && (
             <span
               className="text-white/20 text-xs shrink-0 transition-transform"
@@ -162,7 +154,7 @@ function SessionRow({
               ▸
             </span>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-mono text-xs text-card-white truncate">
               {dateStr}{' '}
               <span className="text-white/30">{timeStr}</span>
@@ -176,27 +168,39 @@ function SessionRow({
           </div>
         </div>
 
-        {/* Hands */}
-        <span className="font-mono text-xs text-white/50 text-right tabular-nums">
+        {/* Mobile: inline stats row */}
+        <div className="flex items-center gap-3 mt-2 sm:hidden pl-5">
+          <span className="font-mono text-[10px] text-white/30">
+            {session.handsPlayed} hands
+          </span>
+          <span className={`font-mono text-[10px] font-semibold ${accuracyColor}`}>
+            {session.summary.totalPrompts > 0 ? `${session.summary.accuracy.toFixed(0)}%` : '—'}
+          </span>
+          <span className="font-mono text-[10px] text-white/30">
+            {session.summary.totalPrompts > 0 ? `${(session.summary.avgResponseMs / 1000).toFixed(1)}s` : ''}
+          </span>
+          {session.summary.longestStreak > 0 && (
+            <span className="font-mono text-[10px] text-gold-400/70">
+              streak {session.summary.longestStreak}
+            </span>
+          )}
+        </div>
+
+        {/* Desktop: grid columns */}
+        <span className="hidden sm:inline font-mono text-xs text-white/50 text-right tabular-nums">
           {session.handsPlayed}
         </span>
-
-        {/* Accuracy */}
-        <span className={`font-mono text-xs text-right tabular-nums font-semibold ${accuracyColor}`}>
+        <span className={`hidden sm:inline font-mono text-xs text-right tabular-nums font-semibold ${accuracyColor}`}>
           {session.summary.totalPrompts > 0
             ? `${session.summary.accuracy.toFixed(0)}%`
             : '—'}
         </span>
-
-        {/* Avg response */}
-        <span className="font-mono text-xs text-white/50 text-right tabular-nums">
+        <span className="hidden sm:inline font-mono text-xs text-white/50 text-right tabular-nums">
           {session.summary.totalPrompts > 0
             ? `${(session.summary.avgResponseMs / 1000).toFixed(1)}s`
             : '—'}
         </span>
-
-        {/* Streak */}
-        <span className="font-mono text-xs text-gold-400/70 text-right tabular-nums">
+        <span className="hidden sm:inline font-mono text-xs text-gold-400/70 text-right tabular-nums">
           {session.summary.longestStreak > 0
             ? session.summary.longestStreak
             : '—'}
@@ -205,37 +209,37 @@ function SessionRow({
 
       {/* Expanded detail: miss log */}
       {isExpanded && hasMisses && (
-        <div className="border-t border-white/5 bg-black/20 px-4 py-3">
+        <div className="border-t border-white/5 bg-black/20 px-3 sm:px-4 py-3">
           <p className="font-body text-[10px] uppercase tracking-wider text-white/20 mb-2">
             Misses ({misses.length})
           </p>
-          <div className="space-y-1">
+          <div className="space-y-1 max-h-48 overflow-y-auto">
             {misses.map((c, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between font-mono text-[11px]"
+                className="flex items-center justify-between font-mono text-[10px] sm:text-[11px]"
                 style={{ animationDelay: `${i * 30}ms` }}
               >
-                <span className="text-white/25">Hand #{c.handNumber}</span>
+                <span className="text-white/25">#{c.handNumber}</span>
                 {(c.promptType ?? 'runningCount') !== 'bestAction' ? (
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 sm:gap-4">
                     <span className="text-white/40">
-                      You: {c.enteredCount}
+                      {c.enteredCount}
                     </span>
                     <span className="text-gold-400/70">
-                      Actual: {c.expectedCount}
+                      → {c.expectedCount}
                     </span>
-                    <span className="text-red-400/80 w-8 text-right">
+                    <span className="text-red-400/80 w-6 sm:w-8 text-right">
                       {c.delta > 0 ? '+' : ''}{c.delta}
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 sm:gap-4">
                     <span className="text-white/40">
-                      Played: {formatAction(c.enteredAction)}
+                      {formatAction(c.enteredAction)}
                     </span>
                     <span className="text-gold-400/70">
-                      Best: {formatAction(c.expectedAction)}
+                      → {formatAction(c.expectedAction)}
                     </span>
                   </div>
                 )}
@@ -257,11 +261,11 @@ function HistoryFooter({ sessions }: { sessions: SessionRecord[] }) {
   const overallAccuracy = totalChecks > 0 ? (totalCorrect / totalChecks) * 100 : 0
 
   return (
-    <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between px-4">
+    <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between px-2 sm:px-4">
       <span className="font-body text-[10px] uppercase tracking-wider text-white/15">
         {sessions.length} sessions · {totalHands} hands
       </span>
-      <span className="font-mono text-xs text-white/30">
+      <span className="font-mono text-[10px] sm:text-xs text-white/30">
         Overall:{' '}
         <span
           className={

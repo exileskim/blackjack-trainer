@@ -95,32 +95,37 @@ export function CountPromptModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{ animation: 'modal-backdrop-in 0.25s ease-out both' }}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
-      {/* Modal */}
+      {/* Modal — slides up from bottom on mobile, centered on desktop */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label={showResult ? 'Prompt result' : PROMPT_LABELS[activePromptType]}
-        className="relative z-10 w-full max-w-sm mx-4"
+        className="relative z-10 w-full max-w-sm sm:mx-4"
         style={{ animation: 'modal-content-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both' }}
       >
-        <div className="rounded-2xl border border-gold-400/30 bg-felt-900/95 backdrop-blur-md p-8 shadow-2xl shadow-black/60">
+        <div className="rounded-t-2xl sm:rounded-2xl border border-gold-400/30 border-b-0 sm:border-b bg-felt-900/95 backdrop-blur-md p-5 sm:p-8 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-8 shadow-2xl shadow-black/60">
           {/* Decorative top accent */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-px h-px w-24 bg-gradient-to-r from-transparent via-gold-400/60 to-transparent" />
+
+          {/* Mobile pull indicator */}
+          <div className="sm:hidden flex justify-center mb-3">
+            <div className="w-8 h-0.5 rounded-full bg-white/15" />
+          </div>
 
           {!showResult ? (
             <>
               {/* Prompt */}
-              <div className="text-center mb-6">
-                <p className="font-body text-xs uppercase tracking-[0.2em] text-white/30 mb-2">
+              <div className="text-center mb-4 sm:mb-6">
+                <p className="font-body text-[10px] sm:text-xs uppercase tracking-[0.2em] text-white/30 mb-1.5 sm:mb-2">
                   Hand #{handNumber}
                 </p>
-                <h2 className="font-display text-2xl text-card-white">
+                <h2 className="font-display text-xl sm:text-2xl text-card-white">
                   {PROMPT_TITLES[activePromptType]}
                 </h2>
               </div>
@@ -139,16 +144,16 @@ export function CountPromptModal({
                         setInput(v)
                       }
                     }}
-                    className="w-full rounded-xl border border-gold-400/30 bg-black/40 px-4 py-4 text-center font-mono text-3xl font-bold text-card-white placeholder-white/20 focus:border-gold-400 focus:outline-none transition-colors"
+                    className="w-full rounded-xl border border-gold-400/30 bg-black/40 px-4 py-3.5 sm:py-4 text-center font-mono text-2xl sm:text-3xl font-bold text-card-white placeholder-white/20 focus:border-gold-400 focus:outline-none transition-colors"
                     style={{ animation: 'glow-pulse 2s ease-in-out infinite' }}
                     placeholder="0"
                     autoComplete="off"
                   />
                   <button
                     type="submit"
-                    className="mt-4 w-full rounded-xl bg-gold-400/15 border border-gold-400/30 px-4 py-3 font-mono text-sm font-semibold text-gold-400 uppercase tracking-wider hover:bg-gold-400/25 transition-colors"
+                    className="mt-3 sm:mt-4 w-full rounded-xl bg-gold-400/15 border border-gold-400/30 px-4 py-3 font-mono text-sm font-semibold text-gold-400 uppercase tracking-wider hover:bg-gold-400/25 transition-colors min-h-[44px]"
                   >
-                    Submit <span className="kbd ml-2">↵</span>
+                    Submit <span className="kbd ml-2 hidden sm:inline-flex">↵</span>
                   </button>
                 </form>
               ) : (
@@ -158,12 +163,12 @@ export function CountPromptModal({
                       key={action}
                       type="button"
                       onClick={() => onSubmitAction(action)}
-                      className="w-full rounded-xl border border-gold-400/30 bg-black/30 px-4 py-3 font-mono text-sm font-semibold text-gold-400 uppercase tracking-wider hover:bg-gold-400/15 transition-colors"
+                      className="w-full rounded-xl border border-gold-400/30 bg-black/30 px-4 py-3 font-mono text-sm font-semibold text-gold-400 uppercase tracking-wider hover:bg-gold-400/15 transition-colors min-h-[44px]"
                     >
                       {ACTION_LABELS[action]}
                     </button>
                   ))}
-                  <p className="mt-1 text-center font-mono text-[10px] text-white/35 uppercase tracking-wider">
+                  <p className="mt-1 text-center font-mono text-[10px] text-white/35 uppercase tracking-wider hidden sm:block">
                     H / S / D / P / R shortcuts
                   </p>
                 </div>
@@ -174,19 +179,19 @@ export function CountPromptModal({
               {/* Result feedback */}
               <div className="text-center" role="status" aria-live="polite">
                 <div
-                  className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
+                  className={`inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full mb-3 sm:mb-4 ${
                     lastResult.isCorrect
                       ? 'bg-emerald-500/20 border border-emerald-500/40'
                       : 'bg-red-500/20 border border-red-500/40'
                   }`}
                 >
-                  <span className="text-3xl">
+                  <span className="text-2xl sm:text-3xl">
                     {lastResult.isCorrect ? '✓' : '✗'}
                   </span>
                 </div>
 
                 <h3
-                  className={`font-display text-xl mb-4 ${
+                  className={`font-display text-lg sm:text-xl mb-3 sm:mb-4 ${
                     lastResult.isCorrect ? 'text-emerald-400' : 'text-red-400'
                   }`}
                 >
@@ -194,29 +199,29 @@ export function CountPromptModal({
                 </h3>
 
                 {!isActionResult ? (
-                  <div className="flex justify-center gap-8 mb-6">
+                  <div className="flex justify-center gap-5 sm:gap-8 mb-5 sm:mb-6">
                     <div>
-                      <p className="font-body text-xs uppercase tracking-wider text-white/30 mb-1">
+                      <p className="font-body text-[10px] sm:text-xs uppercase tracking-wider text-white/30 mb-1">
                         Your answer
                       </p>
-                      <p className="font-mono text-2xl font-bold text-card-white">
+                      <p className="font-mono text-xl sm:text-2xl font-bold text-card-white">
                         {lastResult.enteredCount}
                       </p>
                     </div>
                     <div>
-                      <p className="font-body text-xs uppercase tracking-wider text-white/30 mb-1">
+                      <p className="font-body text-[10px] sm:text-xs uppercase tracking-wider text-white/30 mb-1">
                         {resultType === 'trueCount' ? 'Actual TC' : 'Actual count'}
                       </p>
-                      <p className="font-mono text-2xl font-bold text-gold-400">
+                      <p className="font-mono text-xl sm:text-2xl font-bold text-gold-400">
                         {lastResult.expectedCount}
                       </p>
                     </div>
                     {!lastResult.isCorrect && (
                       <div>
-                        <p className="font-body text-xs uppercase tracking-wider text-white/30 mb-1">
+                        <p className="font-body text-[10px] sm:text-xs uppercase tracking-wider text-white/30 mb-1">
                           Off by
                         </p>
-                        <p className="font-mono text-2xl font-bold text-red-400">
+                        <p className="font-mono text-xl sm:text-2xl font-bold text-red-400">
                           {lastResult.delta > 0 ? '+' : ''}
                           {lastResult.delta}
                         </p>
@@ -224,20 +229,20 @@ export function CountPromptModal({
                     )}
                   </div>
                 ) : (
-                  <div className="flex justify-center gap-8 mb-6">
+                  <div className="flex justify-center gap-5 sm:gap-8 mb-5 sm:mb-6">
                     <div>
-                      <p className="font-body text-xs uppercase tracking-wider text-white/30 mb-1">
+                      <p className="font-body text-[10px] sm:text-xs uppercase tracking-wider text-white/30 mb-1">
                         Your play
                       </p>
-                      <p className="font-mono text-2xl font-bold text-card-white">
+                      <p className="font-mono text-xl sm:text-2xl font-bold text-card-white">
                         {lastResult.enteredAction ? ACTION_LABELS[lastResult.enteredAction] : '—'}
                       </p>
                     </div>
                     <div>
-                      <p className="font-body text-xs uppercase tracking-wider text-white/30 mb-1">
+                      <p className="font-body text-[10px] sm:text-xs uppercase tracking-wider text-white/30 mb-1">
                         Best play
                       </p>
-                      <p className="font-mono text-2xl font-bold text-gold-400">
+                      <p className="font-mono text-xl sm:text-2xl font-bold text-gold-400">
                         {lastResult.expectedAction ? ACTION_LABELS[lastResult.expectedAction] : '—'}
                       </p>
                     </div>
@@ -247,9 +252,9 @@ export function CountPromptModal({
                 <button
                   type="button"
                   onClick={onContinue}
-                  className="w-full rounded-xl bg-gold-400/15 border border-gold-400/30 px-4 py-3 font-mono text-sm font-semibold text-gold-400 uppercase tracking-wider hover:bg-gold-400/25 transition-colors"
+                  className="w-full rounded-xl bg-gold-400/15 border border-gold-400/30 px-4 py-3 font-mono text-sm font-semibold text-gold-400 uppercase tracking-wider hover:bg-gold-400/25 transition-colors min-h-[44px]"
                 >
-                  Continue <span className="kbd ml-2">N</span>
+                  Continue <span className="kbd ml-2 hidden sm:inline-flex">N</span>
                 </button>
               </div>
             </>
