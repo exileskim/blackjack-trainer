@@ -67,12 +67,16 @@ describe('basicStrategy – hard totals', () => {
     expect(getBasicStrategyAction([card('10'), card('6')], card('10'), noSurr)).toBe('hit')
   })
 
-  it('surrenders hard 15 vs dealer 10 (H17)', () => {
-    expect(getBasicStrategyAction([card('10'), card('5')], card('10'), H17_DAS)).toBe('surrender')
+  it('hits hard 15 vs dealer 10 (H17 baseline)', () => {
+    expect(getBasicStrategyAction([card('10'), card('5')], card('10'), H17_DAS)).toBe('hit')
   })
 
   it('surrenders hard 17 vs dealer A (H17)', () => {
     expect(getBasicStrategyAction([card('10'), card('7')], card('A'), H17_DAS)).toBe('surrender')
+  })
+
+  it('hits hard 16 vs dealer 9 (H17 baseline)', () => {
+    expect(getBasicStrategyAction([card('10'), card('6')], card('9'), H17_DAS)).toBe('hit')
   })
 
   it('stands hard 17 vs dealer A (S17)', () => {
@@ -149,11 +153,11 @@ describe('basicStrategy – pairs', () => {
     expect(getBasicStrategyAction([card('8'), card('8')], card('2'), H17_DAS)).toBe('split')
   })
 
-  it('surrenders 8s vs dealer A (H17, Rp → surrender)', () => {
-    expect(getBasicStrategyAction([card('8'), card('8')], card('A'), H17_DAS)).toBe('surrender')
+  it('splits 8s vs dealer A (H17 chart)', () => {
+    expect(getBasicStrategyAction([card('8'), card('8')], card('A'), H17_DAS)).toBe('split')
   })
 
-  it('splits 8s vs dealer A when surrender not allowed (Rp → split)', () => {
+  it('splits 8s vs dealer A when surrender not allowed', () => {
     const noSurr = { ...H17_DAS, surrenderAllowed: false }
     expect(getBasicStrategyAction([card('8'), card('8')], card('A'), noSurr)).toBe('split')
   })

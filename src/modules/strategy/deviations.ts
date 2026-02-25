@@ -2,6 +2,7 @@ import type { Card, RuleConfig } from '@/modules/domain/types.ts'
 import type { PlayerAction } from '@/modules/domain/enums.ts'
 import { cardValue, handTotal, isSoft } from '@/modules/blackjack/rules.ts'
 import { BJA_H17_2019_SOURCE } from '@/modules/strategy/sources/bjaH17_2019.ts'
+import { getBasicStrategyAction } from '@/modules/strategy/basicStrategy.ts'
 
 /**
  * BJ-035: Illustrious 18 + Fab 4 deviation layer.
@@ -19,8 +20,9 @@ export interface Deviation {
   readonly dealerUpValue: number  // 2-11 (11 = Ace)
   readonly basicAction: PlayerAction
   readonly deviationAction: PlayerAction
-  readonly tcThreshold: number    // positive = deviate at >= TC, negative = deviate at <= TC
-  readonly group: 'I18' | 'Fab4'
+  readonly tcThreshold: number
+  readonly comparison: 'gte' | 'lte'
+  readonly group: 'I18' | 'Fab4' | 'BJA'
 }
 
 export const DEVIATION_SOURCE = BJA_H17_2019_SOURCE.metadata
@@ -37,18 +39,23 @@ export function findApplicableDeviation(
   rules: RuleConfig,
   isSplitHand = false,
 ): Deviation | null {
+  // Current source data is an H17 chart; do not apply under S17 rules.
+  if (!rules.dealerHitsSoft17) return null
+
   const total = handTotal(playerCards)
   const soft = isSoft(playerCards)
   const hasTwoCards = playerCards.length === 2
   const isPair = hasTwoCards && !isSplitHand &&
     cardValue(playerCards[0]!) === cardValue(playerCards[1]!)
   const dealerUp = cardValue(dealerUpcard)
+  const basicAction = getBasicStrategyAction(playerCards, dealerUpcard, rules, isSplitHand)
 
   for (const dev of ALL_DEVIATIONS) {
     // Match hand characteristics
     if (dev.playerTotal !== total) continue
     if (dev.isSoftHand !== soft) continue
     if (dev.dealerUpValue !== dealerUp) continue
+    if (dev.basicAction !== basicAction) continue
 
     // Pair deviations only apply to actual pairs
     if (dev.isPair && !isPair) continue
@@ -66,9 +73,8 @@ export function findApplicableDeviation(
     // Split deviations require ability to split
     if (dev.deviationAction === 'split' && !isPair) continue
 
-    // Check threshold direction
-    if (dev.tcThreshold >= 0 && trueCount >= dev.tcThreshold) return dev
-    if (dev.tcThreshold < 0 && trueCount <= dev.tcThreshold) return dev
+    if (dev.comparison === 'gte' && trueCount >= dev.tcThreshold) return dev
+    if (dev.comparison === 'lte' && trueCount <= dev.tcThreshold) return dev
   }
 
   return null
