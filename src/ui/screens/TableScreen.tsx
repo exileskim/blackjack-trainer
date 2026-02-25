@@ -107,6 +107,14 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         case 'R':
           if (canSurrenderActive) store.playerSurrender()
           break
+        case 'ArrowUp':
+          e.preventDefault()
+          store.speedUp()
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          store.speedDown()
+          break
         case 'Escape':
           if (lastPromptResult) {
             setLastPromptResult(null)
@@ -160,6 +168,7 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         promptAccuracy={accuracy}
         dealSpeed={store.ruleConfig.dealSpeed}
         isPaused={store.phase === 'paused'}
+        onCycleSpeed={store.cycleDealSpeed}
       />
 
       {/* Table felt area */}

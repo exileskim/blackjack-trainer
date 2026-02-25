@@ -1,9 +1,19 @@
+import type { DealSpeed } from '@/modules/domain/enums.ts'
+
+const SPEED_LABELS: Record<DealSpeed, string> = {
+  slow: 'Slow',
+  normal: 'Normal',
+  fast: 'Fast',
+  veryFast: 'V.Fast',
+}
+
 interface StatusBarProps {
   handNumber: number
   handsPlayed: number
   promptAccuracy: number | null
-  dealSpeed: string
+  dealSpeed: DealSpeed
   isPaused: boolean
+  onCycleSpeed: () => void
 }
 
 export function StatusBar({
@@ -12,6 +22,7 @@ export function StatusBar({
   promptAccuracy,
   dealSpeed,
   isPaused,
+  onCycleSpeed,
 }: StatusBarProps) {
   return (
     <div className="flex items-center justify-between px-6 py-2.5 bg-black/40 border-b border-white/5">
@@ -47,9 +58,16 @@ export function StatusBar({
         </div>
       )}
 
-      {/* Right: speed + shortcuts */}
+      {/* Right: speed control + shortcuts */}
       <div className="flex items-center gap-4">
-        <span className="font-mono text-xs text-white/30 uppercase">{dealSpeed}</span>
+        <button
+          onClick={onCycleSpeed}
+          className="flex items-center gap-1.5 font-mono text-xs uppercase text-white/40 hover:text-gold-400 transition-colors group"
+          title="Click or press ↑/↓ to change speed"
+        >
+          <span className="group-hover:text-gold-400">{SPEED_LABELS[dealSpeed]}</span>
+          <span className="kbd text-[9px]">↑↓</span>
+        </button>
         <div className="flex items-center gap-1.5 text-white/20">
           <span className="kbd">Space</span>
           <span className="text-[10px]">Pause</span>

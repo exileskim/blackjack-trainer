@@ -30,5 +30,7 @@ export const DEAL_SPEED_MS: Record<DealSpeed, number> = {
   veryFast: 300,
 }
 
+export const DEAL_SPEEDS: DealSpeed[] = ['slow', 'normal', 'fast', 'veryFast']
+
 export const DECK_COUNTS = [1, 2, 6, 8] as const
 export type DeckCount = (typeof DECK_COUNTS)[number]

@@ -3,15 +3,20 @@ import type { TrainingMode } from '@/modules/domain/enums.ts'
 import type { RuleConfig } from '@/modules/domain/types.ts'
 import { DEFAULT_RULES } from '@/modules/domain/types.ts'
 import { DECK_COUNTS } from '@/modules/domain/enums.ts'
+import { loadSettings, saveSettings, type SessionSnapshot } from '@/modules/persistence/repository.ts'
 
 interface HomeScreenProps {
   onStartSession: (mode: TrainingMode, rules: RuleConfig) => void
+  recoveryPrompt?: SessionSnapshot | null
+  onRecover?: () => void
+  onDiscardRecovery?: () => void
 }
 
-export function HomeScreen({ onStartSession }: HomeScreenProps) {
-  const [mode, setMode] = useState<TrainingMode>('countingDrill')
+export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscardRecovery }: HomeScreenProps) {
+  const savedSettings = loadSettings()
+  const [mode, setMode] = useState<TrainingMode>(savedSettings?.mode ?? 'countingDrill')
   const [showSettings, setShowSettings] = useState(false)
-  const [rules, setRules] = useState<RuleConfig>(DEFAULT_RULES)
+  const [rules, setRules] = useState<RuleConfig>(savedSettings?.ruleConfig ?? DEFAULT_RULES)
 
   return (
     <div className="h-full flex flex-col items-center justify-center relative overflow-hidden">
@@ -215,9 +220,36 @@ export function HomeScreen({ onStartSession }: HomeScreenProps) {
           )}
         </div>
 
+        {/* Recovery banner */}
+        {recoveryPrompt && (
+          <div className="w-full rounded-xl border border-gold-400/30 bg-gold-400/5 p-4">
+            <p className="font-body text-sm text-card-white mb-1">Resume interrupted session?</p>
+            <p className="font-mono text-xs text-white/40 mb-3">
+              {recoveryPrompt.handsPlayed} hands played · {recoveryPrompt.countChecks.length} count checks
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={onRecover}
+                className="flex-1 rounded-lg border border-gold-400/30 bg-gold-400/15 px-3 py-2 font-mono text-xs font-semibold text-gold-400 uppercase tracking-wider hover:bg-gold-400/25 transition-colors"
+              >
+                Resume
+              </button>
+              <button
+                onClick={onDiscardRecovery}
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs font-semibold text-white/40 uppercase tracking-wider hover:text-white/60 transition-colors"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Start button */}
         <button
-          onClick={() => onStartSession(mode, rules)}
+          onClick={() => {
+            saveSettings({ mode, ruleConfig: rules })
+            onStartSession(mode, rules)
+          }}
           className="w-full rounded-xl border border-gold-400/40 bg-gold-400/10 px-6 py-4 font-display text-xl text-gold-400 hover:bg-gold-400/20 transition-all group"
         >
           Begin Training

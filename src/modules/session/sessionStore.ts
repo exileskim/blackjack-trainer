@@ -1,7 +1,15 @@
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
 import type { SessionPhase, TrainingMode } from '@/modules/domain/enums.ts'
+import { DEAL_SPEEDS } from '@/modules/domain/enums.ts'
 import type { RuleConfig, CountCheck, Hand, DealerHand } from '@/modules/domain/types.ts'
+import {
+  saveActiveSession,
+  clearActiveSession,
+  saveSessionRecord,
+  type SessionSnapshot,
+  type SessionRecord,
+} from '@/modules/persistence/repository.ts'
 import { createShoe, type Shoe } from '@/modules/blackjack/shoe.ts'
 import { updateRunningCountSingle } from '@/modules/counting/hiLo.ts'
 import {
@@ -44,6 +52,9 @@ export interface SessionState {
   countChecks: CountCheck[]
   handsPlayed: number
 
+  // Session start timestamp
+  startedAt: string | null
+
   // Actions
   startSession: (mode: TrainingMode, rules: RuleConfig) => void
   dealHand: () => void
@@ -58,6 +69,10 @@ export interface SessionState {
   resume: () => void
   endSession: () => void
   resetToIdle: () => void
+  cycleDealSpeed: () => void
+  speedUp: () => void
+  speedDown: () => void
+  restoreSession: (snapshot: SessionSnapshot) => void
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -84,6 +99,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   phaseBeforePause: null,
   countChecks: [],
   handsPlayed: 0,
+  startedAt: null,
 
   startSession(mode, rules) {
     const state = get()
@@ -107,6 +123,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       phaseBeforePause: null,
       countChecks: [],
       handsPlayed: 0,
+      startedAt: new Date().toISOString(),
     })
   },
 
@@ -180,6 +197,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const scheduler = state.promptScheduler!
       const shouldPrompt = scheduler.onHandResolved()
 
+      const newPlayed = state.handsPlayed + 1
       set({
         phase: shouldPrompt ? 'countPromptOpen' : 'handResolved',
         handNumber: handNum,
@@ -187,9 +205,23 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         playerHands: [resolvedPlayerHand],
         dealerHand: resolvedDealerHand,
         activeHandIndex: 0,
-        handsPlayed: state.handsPlayed + 1,
+        handsPlayed: newPlayed,
         pendingPrompt: shouldPrompt,
         promptStartTime: shouldPrompt ? Date.now() : null,
+      })
+
+      // Autosave
+      saveActiveSession({
+        sessionId: state.sessionId!,
+        phase: shouldPrompt ? 'countPromptOpen' : 'handResolved',
+        mode: state.mode,
+        ruleConfig: state.ruleConfig,
+        runningCount: rc,
+        handNumber: handNum,
+        handsPlayed: newPlayed,
+        countChecks: get().countChecks,
+        startedAt: state.startedAt ?? new Date().toISOString(),
+        savedAt: new Date().toISOString(),
       })
     } else {
       // Play + Count mode: wait for player actions
@@ -419,10 +451,45 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   endSession() {
     const state = get()
     if (state.phase === 'idle' || state.phase === 'completed') return
+
+    // Save to history
+    if (state.sessionId && state.handsPlayed > 0) {
+      const checks = state.countChecks
+      const correct = checks.filter((c) => c.isCorrect).length
+      let longestStreak = 0
+      let streak = 0
+      for (const c of checks) {
+        if (c.isCorrect) { streak++; longestStreak = Math.max(longestStreak, streak) }
+        else streak = 0
+      }
+
+      const record: SessionRecord = {
+        sessionId: state.sessionId,
+        mode: state.mode,
+        ruleConfig: state.ruleConfig,
+        startedAt: state.startedAt ?? new Date().toISOString(),
+        endedAt: new Date().toISOString(),
+        handsPlayed: state.handsPlayed,
+        countChecks: checks,
+        summary: {
+          totalPrompts: checks.length,
+          correctPrompts: correct,
+          accuracy: checks.length > 0 ? (correct / checks.length) * 100 : 0,
+          avgResponseMs: checks.length > 0
+            ? checks.reduce((s, c) => s + c.responseMs, 0) / checks.length
+            : 0,
+          longestStreak,
+        },
+      }
+      saveSessionRecord(record)
+    }
+
+    clearActiveSession()
     set({ phase: 'completed', pendingPrompt: false, promptStartTime: null })
   },
 
   resetToIdle() {
+    clearActiveSession()
     set({
       sessionId: null,
       phase: 'idle',
@@ -438,6 +505,54 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       phaseBeforePause: null,
       countChecks: [],
       handsPlayed: 0,
+      startedAt: null,
+    })
+  },
+
+  cycleDealSpeed() {
+    const state = get()
+    const idx = DEAL_SPEEDS.indexOf(state.ruleConfig.dealSpeed)
+    const next = DEAL_SPEEDS[(idx + 1) % DEAL_SPEEDS.length]!
+    set({ ruleConfig: { ...state.ruleConfig, dealSpeed: next } })
+  },
+
+  speedUp() {
+    const state = get()
+    const idx = DEAL_SPEEDS.indexOf(state.ruleConfig.dealSpeed)
+    if (idx < DEAL_SPEEDS.length - 1) {
+      set({ ruleConfig: { ...state.ruleConfig, dealSpeed: DEAL_SPEEDS[idx + 1]! } })
+    }
+  },
+
+  speedDown() {
+    const state = get()
+    const idx = DEAL_SPEEDS.indexOf(state.ruleConfig.dealSpeed)
+    if (idx > 0) {
+      set({ ruleConfig: { ...state.ruleConfig, dealSpeed: DEAL_SPEEDS[idx - 1]! } })
+    }
+  },
+
+  restoreSession(snapshot) {
+    const shoe = createShoe(snapshot.ruleConfig.decks, snapshot.ruleConfig.penetration)
+    const scheduler = createPromptScheduler()
+    set({
+      sessionId: snapshot.sessionId,
+      phase: 'ready',
+      mode: snapshot.mode,
+      ruleConfig: snapshot.ruleConfig,
+      shoe,
+      runningCount: snapshot.runningCount,
+      handNumber: snapshot.handNumber,
+      playerHands: [],
+      dealerHand: null,
+      activeHandIndex: 0,
+      promptScheduler: scheduler,
+      pendingPrompt: false,
+      promptStartTime: null,
+      phaseBeforePause: null,
+      countChecks: snapshot.countChecks,
+      handsPlayed: snapshot.handsPlayed,
+      startedAt: snapshot.startedAt,
     })
   },
 }))
@@ -483,13 +598,32 @@ function finishHand(
   const scheduler = state.promptScheduler!
   const shouldPrompt = scheduler.onHandResolved()
 
+  const newHandsPlayed = state.handsPlayed + 1
+
   set({
     phase: shouldPrompt ? 'countPromptOpen' : 'handResolved',
     playerHands: resolvedHands,
     dealerHand: resolvedDealer,
     runningCount: rc,
-    handsPlayed: state.handsPlayed + 1,
+    handsPlayed: newHandsPlayed,
     pendingPrompt: shouldPrompt,
     promptStartTime: shouldPrompt ? Date.now() : null,
   })
+
+  // Autosave after every resolved hand
+  const updated = get()
+  if (updated.sessionId) {
+    saveActiveSession({
+      sessionId: updated.sessionId,
+      phase: updated.phase,
+      mode: updated.mode,
+      ruleConfig: updated.ruleConfig,
+      runningCount: rc,
+      handNumber: updated.handNumber,
+      handsPlayed: newHandsPlayed,
+      countChecks: updated.countChecks,
+      startedAt: updated.startedAt ?? new Date().toISOString(),
+      savedAt: new Date().toISOString(),
+    })
+  }
 }
