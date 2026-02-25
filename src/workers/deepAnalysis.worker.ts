@@ -3,6 +3,8 @@
 
 import type { AnalysisRequest, AnalysisResult, AnalysisData, AnalysisError } from './deepAnalysis.ts'
 
+type Mutable<T> = { -readonly [K in keyof T]: T[K] }
+
 /**
  * Compute the base house edge from rule configuration.
  *
@@ -75,7 +77,7 @@ function computeFast(
   params: AnalysisRequest['params'],
   baseEdge: number,
 ): AnalysisData {
-  const result: Partial<AnalysisData> = {}
+  const result: Partial<Mutable<AnalysisData>> = {}
 
   const handsPlayed = params.handsPlayed
   const safeHands = handsPlayed > 0 ? handsPlayed : 1
@@ -143,7 +145,7 @@ function computeDeep(
   params: AnalysisRequest['params'],
   baseEdge: number,
 ): AnalysisData {
-  const result: Partial<AnalysisData> = {}
+  const result: Partial<Mutable<AnalysisData>> = {}
 
   const handsPlayed = params.handsPlayed
   const safeHands = handsPlayed > 0 ? handsPlayed : 1
@@ -171,7 +173,7 @@ function computeDeep(
   }
 
   // ----- Variance analysis (deep) -----
-  const { sd, variance } = computeSampleVariance(params.betHistory)
+  const { sd } = computeSampleVariance(params.betHistory)
   const effectiveSd = sd > 0 ? sd : 1.1
   const effectiveVariance = effectiveSd * effectiveSd
 
@@ -287,10 +289,15 @@ function computeSampleVariance(
   return { sd, variance }
 }
 
-// ----- Worker message handler -----
-declare const self: DedicatedWorkerGlobalScope
+interface WorkerScope {
+  onmessage: ((event: MessageEvent<AnalysisRequest>) => void) | null
+  postMessage: (message: AnalysisResult | AnalysisError) => void
+}
 
-self.onmessage = (event: MessageEvent<AnalysisRequest>) => {
+const workerScope = globalThis as unknown as WorkerScope
+
+// ----- Worker message handler -----
+workerScope.onmessage = (event: MessageEvent<AnalysisRequest>) => {
   const request = event.data
   const start = performance.now()
 
@@ -306,12 +313,12 @@ self.onmessage = (event: MessageEvent<AnalysisRequest>) => {
       computeTimeMs,
     }
 
-    self.postMessage(result)
+    workerScope.postMessage(result)
   } catch (err) {
     const error: AnalysisError = {
       id: request.id,
       error: err instanceof Error ? err.message : String(err),
     }
-    self.postMessage(error)
+    workerScope.postMessage(error)
   }
 }
