@@ -25,6 +25,7 @@ interface HomeScreenProps {
   onDeckCountdown?: () => void
   onTrueCountDrill?: () => void
   onWongingDrill?: () => void
+  onProgress?: () => void
 }
 
 export function HomeScreen({
@@ -36,6 +37,7 @@ export function HomeScreen({
   onDeckCountdown,
   onTrueCountDrill,
   onWongingDrill,
+  onProgress,
 }: HomeScreenProps) {
   const savedSettings = loadSettings()
   const [mode, setMode] = useState<TrainingMode>(savedSettings?.mode ?? 'playAndCount')
@@ -408,15 +410,28 @@ export function HomeScreen({
           </div>
         </div>
 
-        {/* ─── History link ─── */}
-        {onShowHistory && (
-          <button
-            onClick={onShowHistory}
-            className="font-body text-xs uppercase tracking-wider text-white/20 hover:text-gold-400/60 transition-colors anim-fade-up anim-delay-7"
-          >
-            Session History
-          </button>
-        )}
+        {/* ─── Progress & History links ─── */}
+        <div className="flex items-center gap-4 anim-fade-up anim-delay-7">
+          {onProgress && (
+            <button
+              onClick={onProgress}
+              className="font-body text-xs uppercase tracking-wider text-gold-400/40 hover:text-gold-400/70 transition-colors"
+            >
+              Progress
+            </button>
+          )}
+          {onProgress && onShowHistory && (
+            <span className="text-white/10 text-xs">·</span>
+          )}
+          {onShowHistory && (
+            <button
+              onClick={onShowHistory}
+              className="font-body text-xs uppercase tracking-wider text-white/20 hover:text-gold-400/60 transition-colors"
+            >
+              History
+            </button>
+          )}
+        </div>
 
         {/* ─── Keyboard hints ─── */}
         <div className="flex items-center gap-6 text-white/15 pb-4 anim-fade-up anim-delay-8">
