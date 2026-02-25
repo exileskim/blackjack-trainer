@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useSessionStore } from '@/modules/session/sessionStore.ts'
 import { HomeScreen } from '@/ui/screens/HomeScreen.tsx'
 import { TableScreen } from '@/ui/screens/TableScreen.tsx'
 import { SummaryScreen } from '@/ui/screens/SummaryScreen.tsx'
+import { HistoryScreen } from '@/ui/screens/HistoryScreen.tsx'
 import { loadActiveSession, clearActiveSession, type SessionSnapshot } from '@/modules/persistence/repository.ts'
 import type { TrainingMode } from '@/modules/domain/enums.ts'
 import type { RuleConfig } from '@/modules/domain/types.ts'
@@ -11,19 +12,19 @@ export function App() {
   const phase = useSessionStore((s) => s.phase)
   const handsPlayed = useSessionStore((s) => s.handsPlayed)
   const countChecks = useSessionStore((s) => s.countChecks)
+  const startedAt = useSessionStore((s) => s.startedAt)
+  const ruleConfig = useSessionStore((s) => s.ruleConfig)
+  const mode = useSessionStore((s) => s.mode)
   const startSession = useSessionStore((s) => s.startSession)
   const resetToIdle = useSessionStore((s) => s.resetToIdle)
   const restoreSession = useSessionStore((s) => s.restoreSession)
 
-  const [recoveryPrompt, setRecoveryPrompt] = useState<SessionSnapshot | null>(null)
-
-  // Check for interrupted session on mount
-  useEffect(() => {
+  const [recoveryPrompt, setRecoveryPrompt] = useState<SessionSnapshot | null>(() => {
     const saved = loadActiveSession()
-    if (saved && saved.handsPlayed > 0) {
-      setRecoveryPrompt(saved)
-    }
-  }, [])
+    return saved && saved.handsPlayed > 0 ? saved : null
+  })
+
+  const [showHistory, setShowHistory] = useState(false)
 
   const handleRecover = useCallback(() => {
     if (recoveryPrompt) {
@@ -52,6 +53,10 @@ export function App() {
     resetToIdle()
   }, [resetToIdle])
 
+  if (showHistory) {
+    return <HistoryScreen onBack={() => setShowHistory(false)} />
+  }
+
   if (phase === 'idle') {
     return (
       <HomeScreen
@@ -59,6 +64,7 @@ export function App() {
         recoveryPrompt={recoveryPrompt}
         onRecover={handleRecover}
         onDiscardRecovery={handleDiscardRecovery}
+        onShowHistory={() => setShowHistory(true)}
       />
     )
   }
@@ -68,7 +74,11 @@ export function App() {
       <SummaryScreen
         handsPlayed={handsPlayed}
         countChecks={countChecks}
+        startedAt={startedAt}
+        mode={mode}
+        ruleConfig={ruleConfig}
         onNewSession={handleNewSession}
+        onShowHistory={() => setShowHistory(true)}
       />
     )
   }

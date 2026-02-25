@@ -5,6 +5,8 @@ import type { PromptScheduler } from '@/modules/prompts/promptScheduler.ts'
 import type { Shoe } from '@/modules/blackjack/shoe.ts'
 import { getHiLoValue } from '@/modules/counting/hiLo.ts'
 import { DEFAULT_RULES } from '@/modules/domain/types.ts'
+import { createPromptScheduler } from '@/modules/prompts/promptScheduler.ts'
+import { loadActiveSession, loadSettings } from '@/modules/persistence/repository.ts'
 import { useSessionStore } from './sessionStore.ts'
 
 function card(rank: Rank, suit: Suit = 'S'): Card {
@@ -18,10 +20,11 @@ function schedulerStub(): PromptScheduler {
     getHandsSincePrompt: () => 0,
     getNextThreshold: () => 4,
     reset: () => {},
+    serialize: () => ({ handsSincePrompt: 0, nextThreshold: 4 }),
   }
 }
 
-function shoeFromCards(cards: Card[]): Shoe & { drawn: number } {
+function shoeFromCards(cards: Card[], deckCount = 1): Shoe & { drawn: number } {
   const queue = [...cards]
   const total = cards.length
   let drawn = 0
@@ -44,6 +47,13 @@ function shoeFromCards(cards: Card[]): Shoe & { drawn: number } {
     },
     reshuffle() {
       throw new Error('reshuffle should not be called in this test')
+    },
+    serialize() {
+      return {
+        cards: [...queue],
+        deckCount,
+        penetration: 0.75,
+      }
     },
     get drawn() {
       return drawn
@@ -84,6 +94,7 @@ function setPlayState(overrides: Partial<ReturnType<typeof useSessionStore.getSt
 
 describe('sessionStore regressions', () => {
   beforeEach(() => {
+    localStorage.clear()
     useSessionStore.getState().resetToIdle()
   })
 
@@ -97,7 +108,7 @@ describe('sessionStore regressions', () => {
       card('5'),
       card('3'),
       card('4'),
-    ])
+    ], 6)
 
     useSessionStore.setState({
       sessionId: 'counting-drill-session',
@@ -173,5 +184,101 @@ describe('sessionStore regressions', () => {
     expect(state.playerHands.length).toBe(1)
     expect(state.playerHands[0]?.isSplit).toBe(false)
     expect(shoe.drawn).toBe(0)
+  })
+
+  it('autosaves resolved hands with shoe and scheduler state', () => {
+    const shoe = shoeFromCards([
+      card('10'),
+      card('6'),
+      card('2'),
+      card('5'),
+      card('3'),
+      card('4'),
+    ], 6)
+    const scheduler = createPromptScheduler(() => 0.3)
+
+    useSessionStore.setState({
+      sessionId: 'autosave-session',
+      phase: 'ready',
+      mode: 'countingDrill',
+      ruleConfig: { ...DEFAULT_RULES },
+      shoe,
+      runningCount: 0,
+      handNumber: 0,
+      playerHands: [],
+      dealerHand: null,
+      activeHandIndex: 0,
+      promptScheduler: scheduler,
+      pendingPrompt: false,
+      promptStartTime: null,
+      phaseBeforePause: null,
+      countChecks: [],
+      handsPlayed: 0,
+      startedAt: '2026-02-25T00:00:00.000Z',
+    })
+
+    useSessionStore.getState().dealHand()
+    const snapshot = loadActiveSession()
+
+    expect(snapshot).not.toBeNull()
+    expect(snapshot?.sessionId).toBe('autosave-session')
+    expect(snapshot?.phase).toBe('handResolved')
+    expect(snapshot?.handsPlayed).toBe(1)
+    expect(snapshot?.pendingPrompt).toBe(false)
+    expect(snapshot?.shoeState.deckCount).toBe(6)
+    expect(snapshot?.schedulerState.nextThreshold).toBe(4)
+    expect(snapshot?.schedulerState.handsSincePrompt).toBe(1)
+  })
+
+  it('restores from saved shoe/scheduler state and keeps draw order', () => {
+    useSessionStore.getState().restoreSession({
+      sessionId: 'restore-session',
+      phase: 'countPromptOpen',
+      mode: 'playAndCount',
+      ruleConfig: { ...DEFAULT_RULES, decks: 1, penetration: 1 },
+      runningCount: 7,
+      handNumber: 12,
+      handsPlayed: 12,
+      countChecks: [],
+      pendingPrompt: false,
+      promptStartTime: null,
+      shoeState: {
+        cards: [card('2'), card('3'), card('4'), card('5')],
+        deckCount: 1,
+        penetration: 1,
+      },
+      schedulerState: {
+        handsSincePrompt: 2,
+        nextThreshold: 5,
+      },
+      startedAt: '2026-02-25T00:00:00.000Z',
+      savedAt: '2026-02-25T00:10:00.000Z',
+    })
+
+    const restored = useSessionStore.getState()
+    expect(restored.phase).toBe('handResolved')
+
+    restored.dealHand()
+    const afterDeal = useSessionStore.getState()
+
+    expect(afterDeal.phase).toBe('awaitingPlayerAction')
+    expect(afterDeal.playerHands[0]?.cards.map((c) => c.rank)).toEqual(['5', '3'])
+    expect(afterDeal.dealerHand?.cards[0]?.rank).toBe('4')
+    expect(afterDeal.runningCount).toBe(10)
+  })
+
+  it('persists in-session speed changes to saved settings', () => {
+    setPlayState({
+      mode: 'playAndCount',
+      ruleConfig: { ...DEFAULT_RULES, dealSpeed: 'normal' },
+    })
+
+    useSessionStore.getState().speedUp()
+    useSessionStore.getState().speedUp()
+    const persisted = loadSettings()
+
+    expect(useSessionStore.getState().ruleConfig.dealSpeed).toBe('veryFast')
+    expect(persisted?.mode).toBe('playAndCount')
+    expect(persisted?.ruleConfig.dealSpeed).toBe('veryFast')
   })
 })

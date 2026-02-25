@@ -23,14 +23,22 @@ export interface Shoe {
   totalCards(): number
   needsReshuffle(): boolean
   reshuffle(): void
+  serialize(): ShoeState
+}
+
+export interface ShoeState {
+  cards: Card[]
+  deckCount: number
+  penetration: number
 }
 
 export function createShoe(
   deckCount: number,
   penetration: number,
   rng: () => number = Math.random,
+  initialCards?: Card[],
 ): Shoe {
-  let cards: Card[] = []
+  let cards: Card[] = initialCards ? [...initialCards] : []
   const total = deckCount * 52
 
   function buildAndShuffle() {
@@ -41,7 +49,9 @@ export function createShoe(
     shuffle(cards, rng)
   }
 
-  buildAndShuffle()
+  if (!initialCards) {
+    buildAndShuffle()
+  }
 
   const cutCardPosition = Math.floor(total * penetration)
 
@@ -68,5 +78,20 @@ export function createShoe(
     reshuffle() {
       buildAndShuffle()
     },
+
+    serialize(): ShoeState {
+      return {
+        cards: [...cards],
+        deckCount,
+        penetration,
+      }
+    },
   }
+}
+
+export function createShoeFromState(
+  state: ShoeState,
+  rng: () => number = Math.random,
+): Shoe {
+  return createShoe(state.deckCount, state.penetration, rng, state.cards)
 }

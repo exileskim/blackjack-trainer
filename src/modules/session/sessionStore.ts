@@ -7,10 +7,11 @@ import {
   saveActiveSession,
   clearActiveSession,
   saveSessionRecord,
+  saveSettings,
   type SessionSnapshot,
   type SessionRecord,
 } from '@/modules/persistence/repository.ts'
-import { createShoe, type Shoe } from '@/modules/blackjack/shoe.ts'
+import { createShoe, createShoeFromState, type Shoe } from '@/modules/blackjack/shoe.ts'
 import { updateRunningCountSingle } from '@/modules/counting/hiLo.ts'
 import {
   canDouble,
@@ -22,7 +23,11 @@ import {
   shouldDealerHit,
 } from '@/modules/blackjack/rules.ts'
 import { resolveOutcome } from '@/modules/blackjack/handResolver.ts'
-import { createPromptScheduler, type PromptScheduler } from '@/modules/prompts/promptScheduler.ts'
+import {
+  createPromptScheduler,
+  createPromptSchedulerFromState,
+  type PromptScheduler,
+} from '@/modules/prompts/promptScheduler.ts'
 import { assertTransition } from './sessionMachine.ts'
 
 export interface SessionState {
@@ -220,6 +225,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         handNumber: handNum,
         handsPlayed: newPlayed,
         countChecks: get().countChecks,
+        pendingPrompt: shouldPrompt,
+        promptStartTime: shouldPrompt ? Date.now() : null,
+        shoeState: shoe.serialize(),
+        schedulerState: scheduler.serialize(),
         startedAt: state.startedAt ?? new Date().toISOString(),
         savedAt: new Date().toISOString(),
       })
@@ -426,6 +435,26 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       pendingPrompt: false,
       promptStartTime: null,
     })
+
+    const updated = get()
+    if (updated.sessionId && updated.shoe && updated.promptScheduler) {
+      saveActiveSession({
+        sessionId: updated.sessionId,
+        phase: updated.phase,
+        mode: updated.mode,
+        ruleConfig: updated.ruleConfig,
+        runningCount: updated.runningCount,
+        handNumber: updated.handNumber,
+        handsPlayed: updated.handsPlayed,
+        countChecks: updated.countChecks,
+        pendingPrompt: updated.pendingPrompt,
+        promptStartTime: updated.promptStartTime,
+        shoeState: updated.shoe.serialize(),
+        schedulerState: updated.promptScheduler.serialize(),
+        startedAt: updated.startedAt ?? new Date().toISOString(),
+        savedAt: new Date().toISOString(),
+      })
+    }
   },
 
   dismissPrompt() {
@@ -433,6 +462,26 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (state.phase !== 'countPromptOpen') return
     assertTransition('countPromptOpen', 'handResolved')
     set({ phase: 'handResolved', pendingPrompt: false, promptStartTime: null })
+
+    const updated = get()
+    if (updated.sessionId && updated.shoe && updated.promptScheduler) {
+      saveActiveSession({
+        sessionId: updated.sessionId,
+        phase: updated.phase,
+        mode: updated.mode,
+        ruleConfig: updated.ruleConfig,
+        runningCount: updated.runningCount,
+        handNumber: updated.handNumber,
+        handsPlayed: updated.handsPlayed,
+        countChecks: updated.countChecks,
+        pendingPrompt: updated.pendingPrompt,
+        promptStartTime: updated.promptStartTime,
+        shoeState: updated.shoe.serialize(),
+        schedulerState: updated.promptScheduler.serialize(),
+        startedAt: updated.startedAt ?? new Date().toISOString(),
+        savedAt: new Date().toISOString(),
+      })
+    }
   },
 
   pause() {
@@ -513,14 +562,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const state = get()
     const idx = DEAL_SPEEDS.indexOf(state.ruleConfig.dealSpeed)
     const next = DEAL_SPEEDS[(idx + 1) % DEAL_SPEEDS.length]!
-    set({ ruleConfig: { ...state.ruleConfig, dealSpeed: next } })
+    const nextRuleConfig = { ...state.ruleConfig, dealSpeed: next }
+    set({ ruleConfig: nextRuleConfig })
+    saveSettings({ mode: state.mode, ruleConfig: nextRuleConfig })
   },
 
   speedUp() {
     const state = get()
     const idx = DEAL_SPEEDS.indexOf(state.ruleConfig.dealSpeed)
     if (idx < DEAL_SPEEDS.length - 1) {
-      set({ ruleConfig: { ...state.ruleConfig, dealSpeed: DEAL_SPEEDS[idx + 1]! } })
+      const nextRuleConfig = { ...state.ruleConfig, dealSpeed: DEAL_SPEEDS[idx + 1]! }
+      set({ ruleConfig: nextRuleConfig })
+      saveSettings({ mode: state.mode, ruleConfig: nextRuleConfig })
     }
   },
 
@@ -528,16 +581,31 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const state = get()
     const idx = DEAL_SPEEDS.indexOf(state.ruleConfig.dealSpeed)
     if (idx > 0) {
-      set({ ruleConfig: { ...state.ruleConfig, dealSpeed: DEAL_SPEEDS[idx - 1]! } })
+      const nextRuleConfig = { ...state.ruleConfig, dealSpeed: DEAL_SPEEDS[idx - 1]! }
+      set({ ruleConfig: nextRuleConfig })
+      saveSettings({ mode: state.mode, ruleConfig: nextRuleConfig })
     }
   },
 
   restoreSession(snapshot) {
-    const shoe = createShoe(snapshot.ruleConfig.decks, snapshot.ruleConfig.penetration)
-    const scheduler = createPromptScheduler()
+    const shoe = snapshot.shoeState
+      ? createShoeFromState(snapshot.shoeState)
+      : createShoe(snapshot.ruleConfig.decks, snapshot.ruleConfig.penetration)
+    const scheduler = snapshot.schedulerState
+      ? createPromptSchedulerFromState(snapshot.schedulerState)
+      : createPromptScheduler()
+    const restoredPhase =
+      snapshot.phase === 'countPromptOpen' && !snapshot.pendingPrompt
+        ? 'handResolved'
+        : snapshot.phase
+    const restoredPromptStartTime =
+      restoredPhase === 'countPromptOpen' && snapshot.pendingPrompt
+        ? Date.now()
+        : null
+
     set({
       sessionId: snapshot.sessionId,
-      phase: 'ready',
+      phase: restoredPhase,
       mode: snapshot.mode,
       ruleConfig: snapshot.ruleConfig,
       shoe,
@@ -547,8 +615,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       dealerHand: null,
       activeHandIndex: 0,
       promptScheduler: scheduler,
-      pendingPrompt: false,
-      promptStartTime: null,
+      pendingPrompt: restoredPhase === 'countPromptOpen' ? snapshot.pendingPrompt : false,
+      promptStartTime: restoredPromptStartTime,
       phaseBeforePause: null,
       countChecks: snapshot.countChecks,
       handsPlayed: snapshot.handsPlayed,
@@ -622,6 +690,10 @@ function finishHand(
       handNumber: updated.handNumber,
       handsPlayed: newHandsPlayed,
       countChecks: updated.countChecks,
+      pendingPrompt: updated.pendingPrompt,
+      promptStartTime: updated.promptStartTime,
+      shoeState: updated.shoe!.serialize(),
+      schedulerState: updated.promptScheduler!.serialize(),
       startedAt: updated.startedAt ?? new Date().toISOString(),
       savedAt: new Date().toISOString(),
     })

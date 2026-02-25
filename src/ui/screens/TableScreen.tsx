@@ -160,7 +160,7 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
     : 0
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" role="main" aria-label="Blackjack training table">
       {/* Status bar */}
       <StatusBar
         handNumber={store.handNumber}
@@ -257,6 +257,12 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         >
           End Session
         </button>
+      </div>
+
+      {/* Screen reader announcements */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {store.phase === 'paused' && 'Session paused'}
+        {store.phase === 'handResolved' && `Hand ${store.handNumber} resolved`}
       </div>
 
       {/* Count prompt modal */}

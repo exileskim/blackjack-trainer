@@ -10,9 +10,10 @@ interface HomeScreenProps {
   recoveryPrompt?: SessionSnapshot | null
   onRecover?: () => void
   onDiscardRecovery?: () => void
+  onShowHistory?: () => void
 }
 
-export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscardRecovery }: HomeScreenProps) {
+export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscardRecovery, onShowHistory }: HomeScreenProps) {
   const savedSettings = loadSettings()
   const [mode, setMode] = useState<TrainingMode>(savedSettings?.mode ?? 'countingDrill')
   const [showSettings, setShowSettings] = useState(false)
@@ -257,6 +258,16 @@ export function HomeScreen({ onStartSession, recoveryPrompt, onRecover, onDiscar
             ↵
           </span>
         </button>
+
+        {/* History link */}
+        {onShowHistory && (
+          <button
+            onClick={onShowHistory}
+            className="font-body text-xs uppercase tracking-wider text-white/20 hover:text-gold-400/60 transition-colors"
+          >
+            Session History
+          </button>
+        )}
 
         {/* Keyboard hints */}
         <div className="flex items-center gap-6 text-white/15">

@@ -4,17 +4,40 @@ export interface PromptScheduler {
   getHandsSincePrompt(): number
   getNextThreshold(): number
   reset(): void
+  serialize(): PromptSchedulerState
+}
+
+export interface PromptSchedulerState {
+  handsSincePrompt: number
+  nextThreshold: 4 | 5
 }
 
 export function createPromptScheduler(
   rng: () => number = Math.random,
 ): PromptScheduler {
-  let handsSincePrompt = 0
-  let nextThreshold = pickThreshold(rng)
+  return createPromptSchedulerInternal(rng)
+}
 
+export function createPromptSchedulerFromState(
+  state: PromptSchedulerState,
+  rng: () => number = Math.random,
+): PromptScheduler {
+  const handsSincePrompt = Math.max(0, Math.trunc(state.handsSincePrompt))
+  const nextThreshold: 4 | 5 = state.nextThreshold === 5 ? 5 : 4
+  return createPromptSchedulerInternal(rng, handsSincePrompt, nextThreshold)
+}
+
+function createPromptSchedulerInternal(
+  rng: () => number,
+  initialHandsSincePrompt = 0,
+  initialThreshold?: 4 | 5,
+): PromptScheduler {
   function pickThreshold(r: () => number): 4 | 5 {
     return r() < 0.5 ? 4 : 5
   }
+
+  let handsSincePrompt = initialHandsSincePrompt
+  let nextThreshold = initialThreshold ?? pickThreshold(rng)
 
   return {
     /**
@@ -46,6 +69,13 @@ export function createPromptScheduler(
     reset(): void {
       handsSincePrompt = 0
       nextThreshold = pickThreshold(rng)
+    },
+
+    serialize(): PromptSchedulerState {
+      return {
+        handsSincePrompt,
+        nextThreshold,
+      }
     },
   }
 }

@@ -1,0 +1,23 @@
+{
+  "name": "Blackjack Count Trainer",
+  "short_name": "Count Trainer",
+  "description": "Train your Hi-Lo card counting skills with realistic blackjack hands",
+  "start_url": "/blackjack-trainer/",
+  "scope": "/blackjack-trainer/",
+  "display": "standalone",
+  "background_color": "#060d08",
+  "theme_color": "#0a1f14",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -30,6 +30,17 @@ const mockSnapshot: SessionSnapshot = {
   runningCount: 3,
   handNumber: 15,
   handsPlayed: 15,
+  pendingPrompt: false,
+  promptStartTime: null,
+  shoeState: {
+    cards: [],
+    deckCount: 6,
+    penetration: 0.75,
+  },
+  schedulerState: {
+    handsSincePrompt: 1,
+    nextThreshold: 4,
+  },
   countChecks: [
     {
       sessionId: 'test-123',

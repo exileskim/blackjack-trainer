@@ -64,7 +64,7 @@ export function ActionBar({
   const isHandResolved = phase === 'handResolved'
 
   return (
-    <div className="flex items-center justify-center gap-3 px-6 py-4">
+    <div className="flex items-center justify-center gap-3 px-6 py-4" role="toolbar" aria-label="Player actions">
       {mode === 'playAndCount' && isAwaitingAction ? (
         <>
           <ActionButton label="Hit" shortcut="H" onClick={onHit} disabled={!canHit} />

@@ -11,7 +11,7 @@ interface HandRailProps {
 
 export function HandRail({ cards, label, total, outcome, holeCardHidden = false }: HandRailProps) {
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2" aria-label={`${label ?? 'Hand'}${total !== undefined ? `, total ${total}` : ''}${outcome ? `, ${outcome}` : ''}`}>
       {/* Label + total */}
       {label && (
         <div className="flex items-center gap-3">

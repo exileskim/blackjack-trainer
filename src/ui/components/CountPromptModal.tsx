@@ -52,6 +52,9 @@ export function CountPromptModal({
 
       {/* Modal */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={showResult ? 'Count result' : 'Enter running count'}
         className="relative z-10 w-full max-w-sm mx-4"
         style={{ animation: 'modal-content-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both' }}
       >
@@ -77,6 +80,7 @@ export function CountPromptModal({
                   ref={inputRef}
                   type="text"
                   inputMode="numeric"
+                  aria-label="Running count"
                   value={input}
                   onChange={(e) => {
                     // Allow negative numbers and digits
@@ -101,7 +105,7 @@ export function CountPromptModal({
           ) : lastResult ? (
             <>
               {/* Result feedback */}
-              <div className="text-center">
+              <div className="text-center" role="status" aria-live="polite">
                 <div
                   className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
                     lastResult.isCorrect

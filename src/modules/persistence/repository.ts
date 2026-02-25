@@ -1,5 +1,7 @@
 import type { CountCheck, RuleConfig } from '@/modules/domain/types.ts'
 import type { TrainingMode, SessionPhase } from '@/modules/domain/enums.ts'
+import type { ShoeState } from '@/modules/blackjack/shoe.ts'
+import type { PromptSchedulerState } from '@/modules/prompts/promptScheduler.ts'
 
 const STORAGE_KEYS = {
   activeSession: 'bjt_active_session',
@@ -17,6 +19,10 @@ export interface SessionSnapshot {
   handNumber: number
   handsPlayed: number
   countChecks: CountCheck[]
+  pendingPrompt: boolean
+  promptStartTime: number | null
+  shoeState: ShoeState
+  schedulerState: PromptSchedulerState
   startedAt: string
   savedAt: string
 }

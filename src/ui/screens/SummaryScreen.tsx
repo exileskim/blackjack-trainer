@@ -1,12 +1,26 @@
-import type { CountCheck } from '@/modules/domain/types.ts'
+import { useState } from 'react'
+import type { CountCheck, RuleConfig } from '@/modules/domain/types.ts'
+import type { TrainingMode } from '@/modules/domain/enums.ts'
 
 interface SummaryScreenProps {
   handsPlayed: number
   countChecks: CountCheck[]
+  startedAt: string | null
+  mode: TrainingMode
+  ruleConfig: RuleConfig
   onNewSession: () => void
+  onShowHistory: () => void
 }
 
-export function SummaryScreen({ handsPlayed, countChecks, onNewSession }: SummaryScreenProps) {
+export function SummaryScreen({
+  handsPlayed,
+  countChecks,
+  startedAt,
+  mode,
+  ruleConfig,
+  onNewSession,
+  onShowHistory,
+}: SummaryScreenProps) {
   const totalPrompts = countChecks.length
   const correctPrompts = countChecks.filter((c) => c.isCorrect).length
   const accuracy = totalPrompts > 0 ? (correctPrompts / totalPrompts) * 100 : 0
@@ -27,6 +41,15 @@ export function SummaryScreen({ handsPlayed, countChecks, onNewSession }: Summar
     }
   }
 
+  // Duration computed once on mount (avoids impure Date.now in render)
+  const [durationMinutes] = useState(() =>
+    startedAt
+      ? Math.round((Date.now() - new Date(startedAt).getTime()) / 60000)
+      : null,
+  )
+
+  const modeLabel = mode === 'countingDrill' ? 'Counting Drill' : 'Play + Count'
+
   return (
     <div className="h-full flex flex-col items-center justify-center relative overflow-hidden">
       <div className="absolute inset-0 bg-void" />
@@ -38,11 +61,17 @@ export function SummaryScreen({ handsPlayed, countChecks, onNewSession }: Summar
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-gold-400/60 mb-2">
             Session Complete
           </p>
-          <h2 className="font-display text-3xl text-card-white">Summary</h2>
+          <h2 className="font-display text-3xl text-card-white mb-2">Summary</h2>
+          <p className="font-body text-xs text-white/30">
+            {modeLabel} · {ruleConfig.decks} deck{ruleConfig.decks > 1 ? 's' : ''}
+            {durationMinutes !== null && durationMinutes > 0 && (
+              <> · {durationMinutes}m</>
+            )}
+          </p>
         </div>
 
         {/* Stats grid */}
-        <div className="w-full grid grid-cols-2 gap-4">
+        <div className="w-full grid grid-cols-2 gap-4" role="list" aria-label="Session statistics">
           <StatCard label="Hands Played" value={handsPlayed.toString()} />
           <StatCard label="Count Checks" value={totalPrompts.toString()} />
           <StatCard
@@ -64,12 +93,13 @@ export function SummaryScreen({ handsPlayed, countChecks, onNewSession }: Summar
             <h3 className="font-body text-xs uppercase tracking-wider text-white/30 mb-3">
               Misses
             </h3>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto" role="list" aria-label="Incorrect count checks">
               {countChecks
                 .filter((c) => !c.isCorrect)
                 .map((c, i) => (
                   <div
                     key={i}
+                    role="listitem"
                     className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
                   >
                     <span className="font-mono text-xs text-white/30">
@@ -93,12 +123,20 @@ export function SummaryScreen({ handsPlayed, countChecks, onNewSession }: Summar
         )}
 
         {/* Actions */}
-        <button
-          onClick={onNewSession}
-          className="w-full rounded-xl border border-gold-400/40 bg-gold-400/10 px-6 py-4 font-display text-xl text-gold-400 hover:bg-gold-400/20 transition-all"
-        >
-          New Session
-        </button>
+        <div className="w-full flex flex-col gap-3">
+          <button
+            onClick={onNewSession}
+            className="w-full rounded-xl border border-gold-400/40 bg-gold-400/10 px-6 py-4 font-display text-xl text-gold-400 hover:bg-gold-400/20 transition-all"
+          >
+            New Session
+          </button>
+          <button
+            onClick={onShowHistory}
+            className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-6 py-3 font-body text-sm text-white/40 hover:text-white/60 hover:bg-white/[0.04] transition-all"
+          >
+            View Session History
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -123,7 +161,7 @@ function StatCard({
           : 'text-card-white'
 
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4" role="listitem">
       <p className="font-body text-[10px] uppercase tracking-wider text-white/30 mb-1">
         {label}
       </p>
