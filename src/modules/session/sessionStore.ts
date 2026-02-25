@@ -390,7 +390,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   endSession() {
     const state = get()
     if (state.phase === 'idle' || state.phase === 'completed') return
-    set({ phase: 'completed' })
+    set({ phase: 'completed', pendingPrompt: false, promptStartTime: null })
   },
 
   resetToIdle() {

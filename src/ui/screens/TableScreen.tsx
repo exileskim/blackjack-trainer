@@ -219,10 +219,12 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         onNextHand={store.dealHand}
       />
 
-      {/* End session button */}
-      <div className="flex justify-center pb-3">
+      {/* End session button - z-60 so it's clickable above the modal backdrop */}
+      <div className="relative z-60 flex justify-center pb-3">
         <button
           onClick={() => {
+            if (autoDealTimer.current) clearTimeout(autoDealTimer.current)
+            setLastPromptResult(null)
             store.endSession()
             onEndSession()
           }}
