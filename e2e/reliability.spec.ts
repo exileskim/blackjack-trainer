@@ -45,11 +45,11 @@ async function clearCountPromptIfOpen(page: Page): Promise<boolean> {
   return true
 }
 
-test('player can actively control hands with Hit and Hold', async ({ page }) => {
+test('player can actively control hands with Hit and Stand', async ({ page }) => {
   await launchTraining(page, 'playAndCount')
 
   let usedHit = false
-  let usedHold = false
+  let usedStand = false
   let handsAdvanced = 0
   let guard = 0
 
@@ -66,16 +66,16 @@ test('player can actively control hands with Hit and Hold', async ({ page }) => 
     }
 
     const hitButton = page.getByRole('button', { name: /^Hit/i })
-    const holdButton = page.getByRole('button', { name: /^Hold/i })
+    const standButton = page.getByRole('button', { name: /^(Stand|Hold)/i })
     if (!usedHit && (await hitButton.isVisible())) {
       await hitButton.click()
       usedHit = true
       continue
     }
 
-    if (await holdButton.isVisible()) {
-      await holdButton.click()
-      usedHold = true
+    if (await standButton.isVisible()) {
+      await standButton.click()
+      usedStand = true
       continue
     }
 
@@ -91,7 +91,7 @@ test('player can actively control hands with Hit and Hold', async ({ page }) => 
   }
 
   expect(usedHit).toBe(true)
-  expect(usedHold).toBe(true)
+  expect(usedStand).toBe(true)
   expect(handsAdvanced).toBeGreaterThan(0)
 
   while (await clearCountPromptIfOpen(page)) {
