@@ -52,14 +52,14 @@ export function TableScreen({ onEndSession }: TableScreenProps) {
         if (autoDealTimer.current) clearTimeout(autoDealTimer.current)
       }
     }
-  }, [store.phase, store.mode, store.handNumber])
+  }, [store, store.phase, store.mode, store.handNumber, store.ruleConfig.dealSpeed])
 
   // Start dealing when session begins
   useEffect(() => {
     if (store.phase === 'ready') {
       store.dealHand()
     }
-  }, [store.phase])
+  }, [store, store.phase])
 
   // Keyboard shortcuts
   useEffect(() => {
